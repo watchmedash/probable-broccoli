@@ -34,7 +34,7 @@ nav.links a:hover { color: var(--ink); }
 .btn.primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
 .btn.ghost { color: var(--blue); background: transparent; }
 .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
-.phones { display: flex; gap: 16px; justify-content: center; }
+.phones { display: flex; gap: 16px; justify-content: center; align-items: flex-start; }
 .phones img { width: 46%; max-width: 240px; height: auto; border-radius: 6px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); }
 .phones img:nth-child(2) { margin-top: 40px; }
 
