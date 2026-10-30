@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto } from "next/font/google";
+import localFont from "next/font/local";
 import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { ToastProvider } from "@/components/Toast";
 import { SITE_URL } from "@/lib/config";
 
-// Roboto, the app's font.
-const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "600", "700", "900"], variable: "--font-roboto", display: "swap" });
+// Roboto, the app's font, bundled with the site (variable weight, Latin).
+const roboto = localFont({ src: "./fonts/Roboto.woff2", weight: "100 900", variable: "--font-roboto", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
