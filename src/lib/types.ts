@@ -32,6 +32,8 @@ export type Hub = {
   automod_domains?: string[];
   automod_min_days?: number;
   allow_user_flair?: boolean;
+  /** 18+ hubs only: keep the swearing filter on anyway. */
+  filter_swearing?: boolean;
 };
 
 export type PollOption = { id: number; position: number; label: string; votes: number };

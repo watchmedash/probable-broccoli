@@ -77,12 +77,13 @@ function Choice({ label, value, options, onChange }: { label: string; value: str
 /** General, Posting and AutoMod share one form: the app saves every setting together. */
 function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posting" | "automod"; admin: boolean }) {
   const [s, setS] = useState({
-    description: hub.description, color: hub.color, rules: hub.rules, icon_url: hub.icon_url, banner_url: hub.banner_url,
+    description: hub.description, rules: hub.rules, icon_url: hub.icon_url, banner_url: hub.banner_url,
     privacy: hub.privacy, status: hub.status, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment,
     allow_images: hub.allow_images, allow_polls: hub.allow_polls, is_mature: hub.is_mature, members_only: hub.members_only,
     allow_crossposts: hub.allow_crossposts ?? true, flair_required: hub.flair_required, allow_user_flair: hub.allow_user_flair ?? false,
     link_domains: (hub.link_domains ?? []).join("\n"), automod_words: (hub.automod_words ?? []).join("\n"),
     automod_domains: (hub.automod_domains ?? []).join("\n"), automod_min_days: hub.automod_min_days ?? 0,
+    filter_swearing: hub.filter_swearing ?? false,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,14 +116,8 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
       {part === "general" && (
         <>
           <div className="field"><label htmlFor="desc">Description</label><textarea id="desc" value={s.description} maxLength={300} onChange={e => set("description", e.target.value)} style={{ minHeight: 80 }} /></div>
-          <div className="field">
-            <label>Colour</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {COLORS.map(c => <button key={c} aria-label={c} aria-pressed={s.color === c} onClick={() => set("color", c)} style={{ width: 32, height: 32, borderRadius: 8, background: c, border: s.color === c ? "3px solid var(--ink)" : "0", cursor: "pointer" }} />)}
-            </div>
-          </div>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <HubIcon hub={{ name: hub.name, color: s.color, icon_url: s.icon_url }} size={56} />
+            <HubIcon hub={{ name: hub.name, color: hub.color, icon_url: s.icon_url }} size={56} />
             <label className="btn quiet">Change icon<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { upload(e.target.files?.[0], "icon_url"); e.target.value = ""; }} /></label>
             {s.icon_url && <button className="linkish small" onClick={() => set("icon_url", null)}>Remove icon</button>}
           </div>
@@ -134,7 +129,8 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <div className="field"><label htmlFor="rules">Rules (one per line, shown as you write them)</label><textarea id="rules" value={s.rules} maxLength={4000} onChange={e => set("rules", e.target.value)} /></div>
           <Choice label="Who can see and join" value={s.privacy} options={[["public", "Public: anyone can join"], ["private", "Private: people ask to join"]]} onChange={v => set("privacy", v)} />
           <Toggle label="Only members see posts" on={s.members_only} onChange={v => set("members_only", v)} />
-          <Toggle label="18+ hub" help="Swearing allowed, and only shown to adults who turned on 18+ hubs." on={s.is_mature} onChange={v => set("is_mature", v)} />
+          <Toggle label="18+ hub" help="Only shown to adults who turned on 18+ hubs." on={s.is_mature} onChange={v => set("is_mature", v)} />
+          {s.is_mature && <Toggle label="Filter swearing" help="Off: swearing is allowed here. Slurs are blocked everywhere either way." on={s.filter_swearing} onChange={v => set("filter_swearing", v)} />}
           <Toggle label="Archived" help="Read only: nothing new can be posted or commented." on={s.status === "archived"} onChange={v => set("status", v ? "archived" : "active")} />
         </>
       )}

@@ -25,7 +25,9 @@ export const viewport: Viewport = { themeColor: "#FFFFFF" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Light unless you picked dark (the switch in the left column).
-  const theme = (await cookies()).get("theme")?.value === "dark" ? "dark" : "light";
+  const jar = await cookies();
+  const theme = jar.get("theme")?.value === "dark" ? "dark" : "light";
+  const collapsed = jar.get("nav")?.value === "collapsed";
   return (
     <html lang="en" className={roboto.variable} data-theme={theme}>
       <body>
@@ -37,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Suspense>
             <Header />
           </Suspense>
-          <div className="shell">
+          <div className={`shell ${collapsed ? "collapsed" : ""}`}>
             <Suspense>
               <LeftNav theme={theme} />
             </Suspense>

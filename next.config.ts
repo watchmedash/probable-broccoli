@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-// The legal pages and the captcha page (loaded by the Android app) stay plain HTML at their old addresses.
-const STATIC_PAGES = ["privacy", "terms", "rules", "child-safety", "delete-account", "captcha"];
+// The captcha page (loaded by the Android app) stays plain HTML at its old address.
+const STATIC_PAGES = ["captcha"];
 
 const nextConfig: NextConfig = {
   async rewrites() {

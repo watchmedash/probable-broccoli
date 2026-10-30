@@ -47,6 +47,24 @@ export function NavLink({ href, icon, label, exact }: { href: string; icon: Reac
   );
 }
 
+/** Folds the left column down to icons (wide screens). Remembered in a cookie. */
+export function CollapseButton() {
+  return (
+    <button
+      className="icon-btn nav-collapse"
+      aria-label="Collapse or expand the menu"
+      onClick={() => {
+        const shell = document.querySelector(".shell");
+        const collapsed = !shell?.classList.contains("collapsed");
+        shell?.classList.toggle("collapsed", collapsed);
+        document.cookie = `nav=${collapsed ? "collapsed" : "open"}; path=/; max-age=31536000; samesite=lax`;
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+    </button>
+  );
+}
+
 /** Light by default; a small link switches. Remembered in a cookie so pages arrive in the right colours. */
 export function ThemeSwitch({ initial }: { initial: string }) {
   const [dark, setDark] = useState(initial === "dark");

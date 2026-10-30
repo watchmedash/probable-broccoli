@@ -145,7 +145,7 @@ export function SignUpForm() {
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       <button className="btn block" disabled={busy}>{busy ? "Creating your account..." : "Create account"}</button>
       <p className="muted small" style={{ textAlign: "center", margin: 0 }}>
-        By creating an account you agree to the <a href="/terms" className="linkish">Terms</a>, the <a href="/rules" className="linkish">Rules</a> and the <a href="/privacy" className="linkish">Privacy Policy</a>. You must be at least 13.
+        By creating an account you agree to the <Link href="/terms" className="linkish">Terms</Link>, the <Link href="/rules" className="linkish">Rules</Link> and the <Link href="/privacy" className="linkish">Privacy Policy</Link>. You must be at least 13.
       </p>
       <p className="muted small" style={{ textAlign: "center", margin: 0 }}>Already have an account? <Link href="/login" className="linkish">Log in</Link></p>
     </form>

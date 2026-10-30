@@ -84,8 +84,9 @@ img { max-width: 100%; }
 /* ------------------------------------------------------------------ layout */
 /* Full width: left column, the page, and a right column that scrolls on its own when it's taller than the screen. */
 .shell { display: grid; grid-template-columns: 264px minmax(0, 1fr); align-items: start; }
-.shell-main { min-width: 0; }
-.leftnav { position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); padding: 12px 12px 24px; display: flex; flex-direction: column; gap: 4px; }
+.shell-main { min-width: 0; grid-column: 2; grid-row: 1; }
+.leftnav { grid-column: 1; grid-row: 1; }
+.leftnav { scrollbar-width: thin; position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); padding: 12px 12px 24px; display: flex; flex-direction: column; gap: 4px; }
 .nav-group { display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .nav-title { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); padding: 10px 12px 6px; }
 .nav-link { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius); color: var(--ink); font-size: 15px; }
@@ -96,6 +97,22 @@ img { max-width: 100%; }
 .nav-small { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 12px; font-size: 12px; color: var(--muted); }
 .nav-small a:hover { text-decoration: underline; }
 .nav-back { display: none; }
+.nav-collapse { align-self: flex-start; margin: 0 0 4px 4px; }
+/* Folded: icons only. */
+.shell.collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+.shell.collapsed .leftnav { padding: 12px 8px; }
+.shell.collapsed .nav-label, .shell.collapsed .nav-title, .shell.collapsed .nav-small { display: none; }
+.shell.collapsed .nav-link { justify-content: center; padding: 9px 0; }
+.shell.collapsed .nav-collapse { align-self: center; margin: 0 0 4px; }
+/* Legal pages. */
+.doc { padding: 24px 28px; max-width: 860px; line-height: 1.65; }
+.panel.doc h1 { font-size: 28px; margin: 0 0 4px; }
+.panel.doc h2 { font-size: 18px; margin: 28px 0 8px; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 700; }
+.doc .updated { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+.doc a { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+.doc ul, .doc ol { padding-left: 22px; }
+.doc li { margin: 4px 0; }
+.doc .box { background: var(--surface-2); border-radius: var(--radius); padding: 4px 16px; margin: 12px 0; }
 .show-nav { display: none; }
 .page { padding: 16px 24px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
 .page.single { grid-template-columns: minmax(0, 1fr); }
@@ -108,10 +125,15 @@ img { max-width: 100%; }
 .recent-thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 1px; flex: none; }
 @media (max-width: 1000px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
+  .shell-main { grid-column: 1; }
   .leftnav { position: fixed; z-index: 40; top: 0; left: 0; height: 100vh; width: 280px; transform: translateX(-100%); transition: transform .2s ease; background: var(--surface); }
   .leftnav.open { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.25); }
   .nav-back { display: block; position: fixed; inset: 0; z-index: 39; background: rgba(0,0,0,.35); }
   .show-nav { display: inline-flex; }
+  .nav-collapse { display: none; }
+  .shell.collapsed { grid-template-columns: minmax(0, 1fr); }
+  .shell.collapsed .nav-label, .shell.collapsed .nav-title, .shell.collapsed .nav-small { display: revert; }
+  .shell.collapsed .nav-link { justify-content: flex-start; padding: 9px 12px; }
 }
 @media (max-width: 1000px) {
   .page { grid-template-columns: minmax(0, 1fr); padding: 0; gap: 0; }

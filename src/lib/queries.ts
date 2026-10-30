@@ -150,7 +150,7 @@ export const REPORT_REASONS: [string, string][] = [
   ["other", "Something else"],
 ];
 
-export const HUB_SETTINGS_COLUMNS = HUB_COLUMNS + ",automod_words,automod_domains,automod_min_days";
+export const HUB_SETTINGS_COLUMNS = HUB_COLUMNS + ",automod_words,automod_domains,automod_min_days,filter_swearing";
 
 export type HubMod = { user: { id: string; username: string; avatar_url: string | null }; can_posts: boolean; can_members: boolean; can_settings: boolean };
 
