@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Icon, I } from "./Icon";
 
 const TOGGLE = "nakodu:menu";
 
@@ -48,24 +47,21 @@ export function NavLink({ href, icon, label, exact }: { href: string; icon: Reac
   );
 }
 
-/** Light by default. The choice is remembered in a cookie so the page arrives in the right colours. */
+/** Light by default; a small link switches. Remembered in a cookie so pages arrive in the right colours. */
 export function ThemeSwitch({ initial }: { initial: string }) {
   const [dark, setDark] = useState(initial === "dark");
   return (
-    <label className="nav-link" style={{ cursor: "pointer" }}>
-      <span className="nav-icon"><Icon icon={I.eye} size={16} /></span>
-      <span className="nav-label" style={{ flex: 1 }}>Dark mode</span>
-      <input
-        type="checkbox"
-        checked={dark}
-        onChange={e => {
-          const v = e.target.checked ? "dark" : "light";
-          setDark(e.target.checked);
-          document.documentElement.dataset.theme = v;
-          document.cookie = `theme=${v}; path=/; max-age=31536000; samesite=lax`;
-        }}
-        style={{ width: 18, height: 18, accentColor: "var(--blue)" }}
-      />
-    </label>
+    <button
+      className="linkish"
+      style={{ color: "inherit", fontWeight: 400, font: "inherit" }}
+      onClick={() => {
+        const v = dark ? "light" : "dark";
+        setDark(!dark);
+        document.documentElement.dataset.theme = v;
+        document.cookie = `theme=${v}; path=/; max-age=31536000; samesite=lax`;
+      }}
+    >
+      {dark ? "Light theme" : "Dark theme"}
+    </button>
   );
 }

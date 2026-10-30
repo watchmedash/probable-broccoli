@@ -24,8 +24,10 @@ export async function Header() {
   return (
     <header className="top">
       <div className="top-in">
-        <MenuButton />
-        <Link href="/" className="wordmark">Nakodu</Link>
+        <div className="top-left">
+          <MenuButton />
+          <Link href="/" className="wordmark">Nakodu</Link>
+        </div>
         <SearchBox />
         <nav className="top-actions">
           <Link href="/search" className="icon-btn show-sm" aria-label="Search"><Icon icon={I.search} size={18} /></Link>

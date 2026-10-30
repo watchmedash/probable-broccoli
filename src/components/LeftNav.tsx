@@ -33,9 +33,6 @@ export async function LeftNav({ theme }: { theme: string }) {
           ))}
         </nav>
       )}
-      <div className="nav-group">
-        <ThemeSwitch initial={theme} />
-      </div>
       <div className="nav-small">
         <a href="/rules">Rules</a>
         <a href="/privacy">Privacy</a>
@@ -43,6 +40,7 @@ export async function LeftNav({ theme }: { theme: string }) {
         <a href="/child-safety">Child safety</a>
         <a href="/delete-account">Delete account</a>
         <a href="/download/nakodu.apk">Android app</a>
+        <ThemeSwitch initial={theme} />
       </div>
     </NavDrawer>
   );
