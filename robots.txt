@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nakodu.top/sitemap.xml
