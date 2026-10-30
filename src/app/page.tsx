@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FeedList } from "@/components/FeedList";
 import { HomeSidebar } from "@/components/Sidebar";
 import { SortTabs } from "@/components/SortTabs";
-import { fetchHubs, fetchPosts, followingIds, myHubIds, parseRange, parseSort, type FeedQuery } from "@/lib/queries";
+import { fetchHubs, fetchPosts, followingIds, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 type Feed = "popular" | "all" | "following";
@@ -21,6 +21,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     const [hubIds, peopleIds] = await Promise.all([myHubIds(sb, me.id), followingIds(sb, me.id)]);
     query = { ...query, hubIds, peopleIds };
   }
+  query = { ...query, blocked: await blockedIds(sb, me?.id) };
   const [page, hubs] = await Promise.all([fetchPosts(sb, query, !!me), fetchHubs(sb)]);
   const tabs: [Feed, string][] = [["popular", "Popular"], ["all", "All"], ...(me ? [["following", "Following"] as [Feed, string]] : [])];
 

@@ -26,6 +26,7 @@ export default async function HubsPage() {
       <div className="panel" style={{ overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--line)" }}>
           <h1 style={{ margin: 0, fontSize: 22, flex: 1 }}>Hubs</h1>
+          {me && <Link href="/hubs/new" className="btn ghost"><span aria-hidden>+</span> Create</Link>}
         </div>
         {yours.length > 0 && <><div className="panel-pad small muted" style={{ paddingBottom: 6, fontWeight: 700 }}>Your hubs</div>{list(yours)}</>}
         <div className="panel-pad small muted" style={{ paddingBottom: 6, fontWeight: 700 }}>{yours.length ? "More hubs" : "All hubs"}</div>

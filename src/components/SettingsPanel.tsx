@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { Icon, I } from "./Icon";
+import { AccountSettings, AdminSettings } from "./MoreSettings";
 
 function Row({ icon, title, sub, onClick, danger }: { icon: keyof typeof I; title: string; sub?: string | null; onClick?: () => void; danger?: boolean }) {
   return (
@@ -17,7 +18,7 @@ function Row({ icon, title, sub, onClick, danger }: { icon: keyof typeof I; titl
   );
 }
 
-export function SettingsPanel({ username }: { username: string }) {
+export function SettingsPanel({ username, admin }: { username: string; admin: boolean }) {
   const [left, setLeft] = useState<number | null>(null);
   const [dialog, setDialog] = useState<"codes" | "password" | "delete" | null>(null);
   const [pw, setPw] = useState({ a: "", b: "" });
@@ -40,7 +41,8 @@ export function SettingsPanel({ username }: { username: string }) {
       <Row icon="lock" title="Change password" onClick={() => setDialog("password")} />
       <Row icon="logout" title="Log out" onClick={async () => { await browserSupabase().auth.signOut(); router.push("/"); router.refresh(); }} />
       <Row icon="trash" title="Delete account" danger onClick={() => setDialog("delete")} />
-      <p className="muted small panel-pad" style={{ margin: 0 }}>More settings (notifications, blocked people, 18+ content) are in the Android app.</p>
+      <AccountSettings />
+      {admin && <AdminSettings />}
 
       {dialog && (
         <div className="dialog-back" onClick={close}>

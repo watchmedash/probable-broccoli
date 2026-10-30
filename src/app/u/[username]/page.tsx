@@ -3,10 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { Avatar } from "@/components/Avatars";
 import { FeedList } from "@/components/FeedList";
-import { FollowButton } from "@/components/JoinButton";
+import { ProfileActions, SelfActions } from "@/components/ProfileActions";
 import { SortTabs } from "@/components/SortTabs";
 import { monthYear } from "@/lib/format";
-import { fetchPosts, fetchProfile, parseRange, parseSort } from "@/lib/queries";
+import { blockedIds, fetchPosts, fetchProfile, isSiteAdmin, parseRange, parseSort } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 const load = cache(async (username: string) => {
@@ -28,10 +28,21 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const me = await currentUser();
   const sort = sp.sort ? parseSort(sp.sort) : "new";
   const range = parseRange(sp.t);
-  const [page, follow] = await Promise.all([
+  const [page, follow, admin, blocked, counts, postScores, commentScores] = await Promise.all([
     fetchPosts(sb, { sort, range, authorId: profile.id }, !!me),
     me && me.id !== profile.id ? sb.from("follows").select("followee_id").eq("follower_id", me.id).eq("followee_id", profile.id).maybeSingle() : null,
+    isSiteAdmin(sb, me?.id),
+    blockedIds(sb, me?.id),
+    sb.from("profiles").select("followers:follows!followee_id(count),following:follows!follower_id(count)").eq("id", profile.id).maybeSingle(),
+    sb.from("posts").select("score").eq("author_id", profile.id),
+    sb.from("comments").select("score").eq("author_id", profile.id),
   ]);
+  // Sparks: everything someone posted or commented, added up (like the app).
+  const sparks = [...(postScores.data ?? []), ...(commentScores.data ?? [])].reduce((n, r: { score: number }) => n + r.score, 0);
+  const c = counts.data as unknown as { followers: { count: number }[]; following: { count: number }[] } | null;
+  const followers = c?.followers?.[0]?.count ?? 0;
+  const followingCount = c?.following?.[0]?.count ?? 0;
+  const isSelf = me?.id === profile.id;
   return (
     <main className="page">
       <div>
@@ -42,14 +53,17 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
             <div className="head-title">
               <h1>u/{profile.username}</h1>
               <span className="muted small">
-                {profile.banned_at ? "Banned from Nakodu" : profile.created_at ? `Joined ${monthYear(profile.created_at)}` : ""}
+                {profile.banned_at ? "Banned from Nakodu" : `${sparks === 1 ? "1 spark" : `${sparks} sparks`}   ${profile.created_at ? `Joined ${monthYear(profile.created_at)}` : ""}`}
+                <br />{followers === 1 ? "1 follower" : `${followers} followers`}   {followingCount} following
               </span>
             </div>
-            {me?.id !== profile.id && (
-              <div style={{ paddingTop: profile.cover_url ? 36 : 0 }}>
-                <FollowButton userId={profile.id} following={!!follow?.data} signedIn={!!me} />
-              </div>
-            )}
+            <div style={{ paddingTop: profile.cover_url ? 36 : 0 }}>
+              {isSelf ? (
+                <SelfActions hasCover={!!profile.cover_url} />
+              ) : (
+                <ProfileActions userId={profile.id} username={profile.username} following={!!follow?.data} blocked={blocked.includes(profile.id)} banned={!!profile.banned_at} signedIn={!!me} admin={admin} />
+              )}
+            </div>
           </div>
         </header>
         <SortTabs base={`/u/${profile.username}`} sort={sort} range={range} defaultSort="new" />

@@ -5,9 +5,11 @@ import { cache } from "react";
 import { HubIcon } from "@/components/Avatars";
 import { FeedList } from "@/components/FeedList";
 import { JoinButton } from "@/components/JoinButton";
+import { Icon, I } from "@/components/Icon";
+import { SelfFlair } from "@/components/SelfFlair";
 import { SortTabs } from "@/components/SortTabs";
 import { countLabel } from "@/lib/format";
-import { fetchHubByName, fetchPosts, parseRange, parseSort } from "@/lib/queries";
+import { fetchHubByName, fetchPosts, parseRange, parseSort, blockedIds, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 const load = cache(async (name: string) => {
@@ -35,12 +37,19 @@ export default async function HubPage({ params, searchParams }: { params: Promis
   const me = await currentUser();
   const sort = parseSort(sp.sort);
   const range = parseRange(sp.t);
-  const [page, member, request] = await Promise.all([
-    fetchPosts(sb, { sort, range, hubId: hub.id }, !!me),
+  const blocked = await blockedIds(sb, me?.id);
+  const [page, member, request, admin, team] = await Promise.all([
+    fetchPosts(sb, { sort, range, hubId: hub.id, blocked }, !!me),
     me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
     me && hub.privacy === "private" ? sb.from("hub_join_requests").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
+    isSiteAdmin(sb, me?.id),
+    me ? hubTeam(sb, hub.id) : Promise.resolve([]),
   ]);
   const joined = !!member?.data;
+  const access = hubAccess(hub, me?.id ?? null, admin, team, joined, false);
+  const myFlair = me && joined && hub.allow_user_flair
+    ? (await sb.from("hub_user_flairs").select("text,color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle()).data ?? undefined
+    : undefined;
   const locked = (hub.privacy === "private" || hub.members_only) && !joined;
   const rules = hub.rules.split("\n").map(r => r.trim()).filter(Boolean);
 
@@ -56,7 +65,8 @@ export default async function HubPage({ params, searchParams }: { params: Promis
               <span className="muted small">{countLabel(hub.member_count, "member")}{hub.is_mature ? "   18+" : ""}</span>
             </div>
             <div style={{ paddingTop: hub.banner_url ? 36 : 0, display: "flex", gap: 8 }}>
-              {joined && <Link href={`/submit?hub=${hub.name}`} className="btn quiet hide-sm">Create a post</Link>}
+              {access.isStaff && <Link href={`/n/${hub.name}/settings`} className="icon-btn" aria-label="Hub settings"><Icon icon={I.settings} size={18} /></Link>}
+              {(joined || access.isStaff) && <Link href={`/submit?hub=${hub.name}`} className="btn quiet hide-sm">Create a post</Link>}
               <JoinButton hubId={hub.id} joined={joined} requested={!!request?.data} isPrivate={hub.privacy === "private"} signedIn={!!me} />
             </div>
           </div>
@@ -73,14 +83,16 @@ export default async function HubPage({ params, searchParams }: { params: Promis
         {locked && page.posts.length === 0 ? (
           <div className="empty">{hub.privacy === "private" ? "This hub is private. Ask to join to see its posts." : "Only members see posts here. Join to read them."}</div>
         ) : (
-          <FeedList initial={page.posts} next={page.next} query={{ sort, range, hubId: hub.id }} showHub={false} signedIn={!!me} empty="No posts here yet." />
+          <FeedList initial={page.posts} next={page.next} query={{ sort, range, hubId: hub.id, blocked }} showHub={false} signedIn={!!me} empty="No posts here yet." />
         )}
       </div>
       <aside className="side">
         <section className="panel panel-pad">
           <h2>About</h2>
           <p style={{ margin: "0 0 10px" }}>{hub.description || "No description yet."}</p>
-          <p className="muted small" style={{ margin: 0 }}>{countLabel(hub.member_count, "member")}</p>
+          <p className="muted small" style={{ margin: "0 0 12px" }}>{countLabel(hub.member_count, "member")}</p>
+          <Link href={`/n/${hub.name}/message-mods`} className="btn quiet block"><Icon icon={I.mail} size={14} /> Message the mods</Link>
+          {me && joined && hub.allow_user_flair && <div style={{ marginTop: 8 }}><SelfFlair hubId={hub.id} me={me} current={myFlair} /></div>}
         </section>
         {rules.length > 0 && (
           <section className="panel panel-pad">

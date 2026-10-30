@@ -27,6 +27,11 @@ export type Hub = {
   link_domains: string[] | null;
   flair_required: boolean;
   members_only: boolean;
+  allow_crossposts?: boolean;
+  automod_words?: string[];
+  automod_domains?: string[];
+  automod_min_days?: number;
+  allow_user_flair?: boolean;
 };
 
 export type PollOption = { id: number; position: number; label: string; votes: number };
@@ -47,13 +52,18 @@ export type Post = {
   locked: boolean;
   spoiler: boolean;
   mature: boolean;
-  community: Pick<Hub, "id" | "name" | "color" | "icon_url" | "is_mature" | "link_domains" | "status" | "who_can_comment"> | null;
+  community: (Pick<Hub, "id" | "name" | "color" | "icon_url" | "is_mature" | "link_domains" | "status" | "who_can_comment" | "created_by" | "privacy" | "who_can_post"> & { allow_crossposts?: boolean; allow_user_flair?: boolean }) | null;
   author: Pick<Profile, "id" | "username" | "avatar_url"> | null;
   poll: PollOption[] | null;
   flair: Flair | null;
   my_vote?: { value: number }[];
   my_poll?: { option_id: number }[];
   my_save?: { post_id: number }[];
+  original?: {
+    id: number; title: string; body: string; image_url: string | null; image_urls: string[] | null; created_at: string;
+    community: Pick<Hub, "id" | "name" | "color" | "icon_url"> | null;
+    author: Pick<Profile, "id" | "username" | "avatar_url"> | null;
+  } | null;
 };
 
 export type Comment = {

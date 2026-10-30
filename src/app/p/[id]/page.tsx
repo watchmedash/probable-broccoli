@@ -8,12 +8,13 @@ import { Comments } from "@/components/Comments";
 import { Icon, I } from "@/components/Icon";
 import { Covered, YouTube } from "@/components/Media";
 import { Poll } from "@/components/Poll";
+import { LinkCard } from "@/components/LinkCard";
 import { PostMenu } from "@/components/PostMenu";
 import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
-import { fetchComments, fetchPost } from "@/lib/queries";
+import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
@@ -43,10 +44,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { me, sb, post } = await load(Number((await params).id));
   if (!post) notFound();
-  const [comments, siteDomains] = await Promise.all([
+  const hub = post.community;
+  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows] = await Promise.all([
     fetchComments(sb, post.id, !!me),
-    post.community ? Promise.resolve(null) : sb.from("site_link_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
+    hub ? Promise.resolve(null) : sb.from("site_link_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
+    isSiteAdmin(sb, me?.id),
+    hub ? hubTeam(sb, hub.id) : Promise.resolve([]),
+    hub && me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
+    hub && me ? sb.from("hub_bans").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
+    blockedIds(sb, me?.id),
+    hub?.allow_user_flair ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
   ]);
+  const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
+  const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
+  const authorFlair = post.author ? userFlairs[post.author.id] : undefined;
   // Comment links are clickable only for the sites the hub's mods (or, on profiles, the admins) allow.
   const allowed = post.community ? post.community.link_domains ?? [] : siteDomains ?? [];
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
@@ -54,7 +65,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // A post that is only a YouTube link shows the player instead of the bare link.
   const onlyLink = yt && post.body.trim().split(/\s+/).length === 1 && youTubeId(post.body.trim());
   const where = post.community ? `n/${post.community.name}` : null;
-  const closed = post.locked || post.community?.status === "archived";
+  // The first non-YouTube link gets a preview card, like in the app.
+  const firstLink = images.length === 0 && !yt ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
+  const closed = post.locked || post.community?.status === "archived" || (!!me && !access.canComment && !access.isStaff);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -94,11 +107,28 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
                 {post.edited_at && <span>edited</span>}
               </span>
               {post.community && (
-                <Link href={`/u/${post.author?.username ?? ""}`} className="author small">{post.author ? `u/${post.author.username}` : "[deleted]"}</Link>
+                <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Link href={`/u/${post.author?.username ?? ""}`} className="author small">{post.author ? `u/${post.author.username}` : "[deleted]"}</Link>
+                  {authorFlair && <span className="tag" style={{ background: authorFlair.color, color: "#fff" }}>{authorFlair.text}</span>}
+                </span>
               )}
             </div>
             <span style={{ marginLeft: "auto" }}>
-              <PostMenu postId={post.id} authorId={post.author?.id ?? null} signedIn={!!me} myId={me?.id ?? null} />
+              <PostMenu
+                postId={post.id}
+                hubId={hub?.id ?? null}
+                authorId={post.author?.id ?? null}
+                myId={me?.id ?? null}
+                saved={!!post.my_save?.length}
+                pinned={!!post.pinned_at}
+                locked={post.locked}
+                spoiler={post.spoiler}
+                mature={post.mature}
+                flairId={post.flair?.id ?? null}
+                isStaff={access.isStaff}
+                canRemove={access.canRemove}
+                canCrosspost={!post.original && (hub?.allow_crossposts ?? true)}
+              />
             </span>
           </div>
           <h1>{post.title}</h1>
@@ -114,6 +144,19 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             {yt && <YouTube id={yt} title={post.title} playInline />}
             {!onlyLink && post.body && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />}
           </Covered>
+          {post.original && (
+            // A crosspost shows the post it shares.
+            <Link href={`/p/${post.original.id}`} className="panel" style={{ display: "block", padding: 12, margin: "8px 0", background: "var(--surface-2)" }}>
+              <span className="meta">
+                {post.original.community ? <><HubIcon hub={post.original.community} size={20} /><b>n/{post.original.community.name}</b></> : <><Avatar user={post.original.author} size={20} /><b>u/{post.original.author?.username ?? "deleted"}</b></>}
+                <span>{timeAgo(post.original.created_at)}</span>
+              </span>
+              <span className="card-title" style={{ fontSize: 17 }}>{post.original.title}</span>
+              {(post.original.image_urls?.[0] ?? post.original.image_url) && <span className="media"><img src={post.original.image_urls?.[0] ?? post.original.image_url!} alt="" loading="lazy" /></span>}
+              {post.original.body && <span className="card-body">{plainText(post.original.body, 240)}</span>}
+            </Link>
+          )}
+          {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} />}
           {post.poll && post.poll.length > 0 && (
             <Poll postId={post.id} options={post.poll} mine={post.my_poll?.[0]?.option_id ?? null} signedIn={!!me} />
           )}
@@ -130,6 +173,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           myId={me?.id ?? null}
           closed={closed}
           allowedDomains={allowed}
+          canRemove={access.canRemove}
+          blocked={blocked}
+          userFlairs={userFlairs}
         />
       </div>
       <aside className="side">

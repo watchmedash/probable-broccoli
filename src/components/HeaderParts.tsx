@@ -37,6 +37,8 @@ export function UserMenu({ username, avatar }: { username: string; avatar: strin
       {open && (
         <div className="menu" onClick={() => setOpen(false)}>
           <Link href={`/u/${username}`}><Icon icon={I.user} size={14} /> u/{username}</Link>
+          <Link href="/saved"><Icon icon={I.save} size={14} /> Saved</Link>
+          <Link href="/hubs/new"><Icon icon={I.plus} size={14} /> Create a hub</Link>
           <Link href="/settings"><Icon icon={I.settings} size={14} /> Settings</Link>
           <button
             onClick={async () => {

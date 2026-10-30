@@ -4,12 +4,16 @@ import type { Comment, Hub, Notification, Post, Profile } from "./types";
 
 // The same columns the Android app reads (data/Repositories.kt).
 export const HUB_COLUMNS =
-  "id,name,description,color,created_by,who_can_post,member_count,icon_url,banner_url,rules,privacy,status,who_can_comment,allow_images,allow_polls,is_mature,link_domains,flair_required,members_only";
+  "id,name,description,color,created_by,who_can_post,member_count,icon_url,banner_url,rules,privacy,status,who_can_comment,allow_images,allow_polls,is_mature,link_domains,flair_required,members_only,allow_crossposts,allow_user_flair";
 const AUTHOR = "author:profiles!author_id(id,username,avatar_url)";
 const POST_BASE =
   `id,community_id,title,body,score,comment_count,created_at,edited_at,image_url,image_urls,pinned_at,locked,spoiler,mature,` +
-  `community:communities(id,name,color,icon_url,is_mature,link_domains,status,who_can_comment),${AUTHOR},` +
-  `poll:poll_options(id,position,label,votes),flair:hub_flairs(id,label,color)`;
+  `community:communities(id,name,color,icon_url,is_mature,link_domains,status,who_can_comment,allow_crossposts,created_by,privacy,who_can_post,allow_user_flair),${AUTHOR},` +
+  `poll:poll_options(id,position,label,votes),flair:hub_flairs(id,label,color),` +
+  // The post a crosspost shares (null when guests can't see it, or it was removed).
+  `original(id,title,body,image_url,image_urls,created_at,community:communities(id,name,color,icon_url),author:profiles!author_id(id,username,avatar_url))`;
+/** Every post column for a signed-in reader (for embeds like saved posts). */
+export const POST_SELECT = `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id)`;
 const postColumns = (signedIn: boolean) =>
   signedIn ? `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id)` : POST_BASE;
 const commentColumns = (signedIn: boolean) =>
@@ -35,6 +39,8 @@ export type FeedQuery = {
   peopleIds?: string[];
   search?: string;
   offset?: number;
+  /** People you blocked: their posts stay out of your feeds. */
+  blocked?: string[];
 };
 
 export const parseSort = (s?: string): Sort => (s === "new" || s === "top" ? s : "hot");
@@ -51,6 +57,7 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   if (days) query = query.gte("created_at", new Date(Date.now() - days * 86400000).toISOString());
   if (q.hubId != null) query = query.eq("community_id", q.hubId);
   if (q.authorId) query = query.eq("author_id", q.authorId);
+  if (q.blocked?.length) query = query.not("author_id", "in", `(${q.blocked.join(",")})`);
   if (q.peopleIds) {
     const parts = [];
     if (q.hubIds?.length) parts.push(`community_id.in.(${q.hubIds.join(",")})`);
@@ -142,3 +149,69 @@ export const REPORT_REASONS: [string, string][] = [
   ["rules", "Breaks the hub's rules"],
   ["other", "Something else"],
 ];
+
+export const HUB_SETTINGS_COLUMNS = HUB_COLUMNS + ",automod_words,automod_domains,automod_min_days";
+
+export type HubMod = { user: { id: string; username: string; avatar_url: string | null }; can_posts: boolean; can_members: boolean; can_settings: boolean };
+
+export async function isSiteAdmin(sb: SupabaseClient, uid: string | undefined | null): Promise<boolean> {
+  if (!uid) return false;
+  const { data } = await sb.from("site_admins").select("user_id").eq("user_id", uid);
+  return (data ?? []).length > 0;
+}
+
+export async function hubTeam(sb: SupabaseClient, hubId: number): Promise<HubMod[]> {
+  const { data } = await sb.from("hub_mods").select("can_posts,can_members,can_settings,user:profiles!user_id(id,username,avatar_url)").eq("hub_id", hubId).order("added_at");
+  return ((data ?? []) as unknown as HubMod[]).filter(m => m.user);
+}
+
+export async function blockedIds(sb: SupabaseClient, uid: string | undefined | null): Promise<string[]> {
+  if (!uid) return [];
+  const { data } = await sb.from("blocks").select("blocked_id").eq("blocker_id", uid);
+  return (data ?? []).map((r: { blocked_id: string }) => r.blocked_id);
+}
+
+/** What someone may do in a hub; mirrors the app's HubAccess (the database has the final say). */
+export type Access = { isStaff: boolean; isOwner: boolean; canRemove: boolean; canMembers: boolean; canSettings: boolean; canPost: boolean; canComment: boolean };
+export function hubAccess(hub: { created_by: string | null; status: string; privacy: string; who_can_post: string; who_can_comment: string } | null, uid: string | null, admin: boolean, team: HubMod[], joined: boolean, banned: boolean): Access {
+  const none = { isStaff: false, isOwner: false, canRemove: false, canMembers: false, canSettings: false, canPost: false, canComment: false };
+  if (!uid) return none;
+  if (!hub) return { ...none, isStaff: admin, isOwner: admin, canRemove: admin, canPost: true, canComment: true };
+  const owner = admin || hub.created_by === uid;
+  const mine = team.find(m => m.user.id === uid);
+  const staff = owner || !!mine;
+  const open = hub.status !== "archived" && !banned && (hub.privacy !== "private" || joined);
+  return {
+    isStaff: staff,
+    isOwner: owner,
+    canRemove: owner || !!mine?.can_posts,
+    canMembers: owner || !!mine?.can_members,
+    canSettings: owner || !!mine?.can_settings,
+    canPost: staff || (open && (hub.who_can_post === "mods" ? false : hub.who_can_post === "members" ? joined : true)),
+    canComment: staff || (open && (hub.who_can_comment !== "members" || joined)),
+  };
+}
+
+/** One line of plain English for a mod log entry, worded like the app. */
+export function describeModAction(e: { action: string; detail: string; actor: { username: string } | null; target: { username: string } | null }): string {
+  const who = e.actor ? `u/${e.actor.username}` : "A mod";
+  const whom = e.target ? `u/${e.target.username}` : "[deleted]";
+  const about = e.detail?.trim() ? `: ${e.detail}` : "";
+  switch (e.action) {
+    case "remove_post": return `${who} removed a post by ${whom}${about}`;
+    case "remove_comment": return `${who} removed a comment by ${whom}${about}`;
+    case "pin": return `${who} pinned${about}`;
+    case "unpin": return `${who} unpinned${about}`;
+    case "lock": return `${who} locked${about}`;
+    case "unlock": return `${who} unlocked${about}`;
+    case "change_prefix": return `${who} changed the prefix on${about}`;
+    case "change_tags": return `${who} changed the tags on${about}`;
+    case "ban": return `${who} banned ${whom}${about}`;
+    case "unban": return `${who} unbanned ${whom}`;
+    case "add_mod": return `${who} added ${whom} as a mod`;
+    case "remove_mod": return `${who} removed ${whom} as a mod`;
+    case "remove_member": return `${who} removed ${whom} from the hub`;
+    case "edit_settings": return `${who} changed the hub settings`;
+    default: return `${who}: ${e.action}${about}`;
+  }
+}

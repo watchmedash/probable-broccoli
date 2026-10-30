@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Avatar, HubIcon } from "@/components/Avatars";
 import { FeedList } from "@/components/FeedList";
 import { SearchForm } from "@/components/SearchForm";
-import { fetchPosts, HUB_COLUMNS } from "@/lib/queries";
+import { fetchPosts, HUB_COLUMNS, blockedIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import type { Hub, Profile } from "@/lib/types";
 
@@ -25,8 +25,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   let body: React.ReactNode = <div className="empty">Search posts, hubs and people.</div>;
   if (q) {
     if (kind === "posts") {
-      const page = await fetchPosts(sb, { sort: "top", search: q }, !!me);
-      body = <FeedList initial={page.posts} next={page.next} query={{ sort: "top", search: q }} showHub signedIn={!!me} empty={`No posts match "${q}".`} />;
+      const blocked = await blockedIds(sb, me?.id);
+      const page = await fetchPosts(sb, { sort: "top", search: q, blocked }, !!me);
+      body = <FeedList initial={page.posts} next={page.next} query={{ sort: "top", search: q, blocked }} showHub signedIn={!!me} empty={`No posts match "${q}".`} />;
     } else if (kind === "hubs") {
       const { data } = await sb.from("communities").select(HUB_COLUMNS).or(`name.ilike.${like(q)},description.ilike.${like(q)}`).order("member_count", { ascending: false }).limit(30);
       const hubs = (data ?? []) as Hub[];

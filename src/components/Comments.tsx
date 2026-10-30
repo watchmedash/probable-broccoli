@@ -12,6 +12,7 @@ import { myVote, type Comment } from "@/lib/types";
 import { Avatar } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
+import { AskDialog } from "./Dialogs";
 import { useToast } from "./Toast";
 import { Votes } from "./VoteBar";
 
@@ -21,18 +22,22 @@ type Ctx = {
   closed: boolean;
   allowedDomains: string[];
   postId: number;
+  canRemove: boolean;
+  userFlairs: Record<string, { text: string; color: string }>;
   add: (c: Comment) => void;
   replace: (c: Comment) => void;
 };
 
-export function Comments({ postId, initial, signedIn, myId, closed, allowedDomains }: {
+export function Comments({ postId, initial, signedIn, myId, closed, allowedDomains, canRemove = false, blocked = [], userFlairs = {} }: {
   postId: number; initial: Comment[]; signedIn: boolean; myId: string | null; closed: boolean; allowedDomains: string[];
+  canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string }>;
 }) {
-  const [rows, setRows] = useState(initial);
+  // Comments from people you blocked are left out, like in the app.
+  const [rows, setRows] = useState(() => initial.filter(c => !c.author || !blocked.includes(c.author.id)));
   const [sort, setSort] = useState<CommentSort>("top");
   const tree = useMemo(() => buildTree(rows, sort), [rows, sort]);
   const ctx: Ctx = {
-    signedIn, myId, closed, allowedDomains, postId,
+    signedIn, myId, closed, allowedDomains, postId, canRemove, userFlairs,
     add: c => setRows(r => [...r, c]),
     replace: c => setRows(r => r.map(x => (x.id === c.id ? c : x))),
   };
@@ -125,7 +130,9 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const toast = useToast();
+  const flair = c.author ? ctx.userFlairs[c.author.id] : undefined;
   const mine = !!ctx.myId && c.author?.id === ctx.myId && !c.deleted;
   return (
     <div className="c">
@@ -140,6 +147,7 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
               <b>u/{c.author.username}</b>
             </Link>
           )}
+          {flair && !c.deleted && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
           <span>{timeAgo(c.created_at)}</span>
           {c.edited_at && !c.deleted && <span>edited</span>}
         </div>
@@ -175,6 +183,9 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
                 ) : ctx.signedIn && (
                   <button className="act" onClick={() => setReporting(true)} aria-label="Report"><Icon icon={I.flag} size={12} /></button>
                 )}
+                {ctx.canRemove && !mine && (
+                  <button className="act" onClick={() => setRemoving(true)} aria-label="Remove comment" style={{ color: "var(--error)" }}><Icon icon={I.trash} size={12} /></button>
+                )}
               </div>
             )}
             {replying && <Composer ctx={ctx} parentId={c.id} placeholder={`Reply to u/${c.author?.username ?? "deleted"}`} onDone={() => setReplying(false)} />}
@@ -185,6 +196,22 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
         )}
       </div>
       {reporting && <ReportDialog target={{ comment_id: c.id }} onClose={() => setReporting(false)} />}
+      {removing && (
+        <AskDialog
+          title="Remove this comment?"
+          text="The author is told, with your reason if you give one. It goes in the mod log."
+          field
+          placeholder="Reason (optional)"
+          action="Remove"
+          danger
+          onClose={() => setRemoving(false)}
+          onConfirm={async reason => {
+            const { error } = await browserSupabase().rpc("remove_comment", { comment: c.id, reason: reason || null });
+            if (error) return errorMessage(error);
+            ctx.replace({ ...c, deleted: true });
+          }}
+        />
+      )}
     </div>
   );
 }
