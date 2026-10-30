@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light only;
   --blue: #2563eb;
   --blue-dark: #1d4ed8;
   --ink: #0f172a;
@@ -6,17 +7,6 @@
   --line: #e2e8f0;
   --bg: #f8fafc;
   --card: #ffffff;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --blue: #60a5fa;
-    --blue-dark: #93c5fd;
-    --ink: #e2e8f0;
-    --muted: #94a3b8;
-    --line: #1e293b;
-    --bg: #0b1120;
-    --card: #111827;
-  }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -45,7 +35,7 @@ nav.links a:hover { color: var(--ink); }
 .btn.ghost { color: var(--blue); background: transparent; }
 .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
 .phones { display: flex; gap: 16px; justify-content: center; }
-.phones img { width: 46%; max-width: 240px; border-radius: 6px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); }
+.phones img { width: 46%; max-width: 240px; height: auto; border-radius: 6px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); }
 .phones img:nth-child(2) { margin-top: 40px; }
 
 .features { padding: 40px 0 72px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
