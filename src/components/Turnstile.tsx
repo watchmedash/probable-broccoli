@@ -47,5 +47,5 @@ export function Turnstile({ round, onToken }: { round: number; onToken: (t: stri
       cb.current(null);
     };
   }, [round]);
-  return <div ref={box} style={{ minHeight: 65 }} />;
+  return <div ref={box} style={{ minHeight: 65, display: "flex", justifyContent: "center" }} />;
 }

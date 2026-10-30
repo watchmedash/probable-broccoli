@@ -9,6 +9,7 @@ import { Icon, I } from "@/components/Icon";
 import { Covered, YouTube } from "@/components/Media";
 import { Poll } from "@/components/Poll";
 import { LinkCard } from "@/components/LinkCard";
+import { RecentPosts, RecordVisit } from "@/components/RecentPosts";
 import { PostMenu } from "@/components/PostMenu";
 import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
@@ -188,7 +189,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             <Link href={`/n/${post.community.name}`} className="btn quiet block">See the hub</Link>
           </section>
         )}
+        <RecentPosts />
       </aside>
+      <RecordVisit post={{
+        id: post.id, title: post.title, created_at: post.created_at, score: post.score, comments: post.comment_count,
+        image: post.spoiler || post.mature ? null : images[0] ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null),
+        hub: post.community ? { name: post.community.name, color: post.community.color, icon_url: post.community.icon_url } : null,
+        author: post.author?.username ?? null,
+      }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     </main>
   );

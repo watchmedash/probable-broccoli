@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { cookies } from "next/headers";
 import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { LeftNav } from "@/components/LeftNav";
 import { ToastProvider } from "@/components/Toast";
 import { SITE_URL } from "@/lib/config";
 
@@ -19,13 +21,13 @@ export const metadata: Metadata = {
   icons: { icon: [{ url: "/img/icon.svg", type: "image/svg+xml" }, { url: "/img/icon-192.png", sizes: "192x192" }], apple: "/img/icon-192.png" },
 };
 
-export const viewport: Viewport = {
-  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#FFFFFF" }, { media: "(prefers-color-scheme: dark)", color: "#151A21" }],
-};
+export const viewport: Viewport = { themeColor: "#FFFFFF" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Light unless you picked dark (the switch in the left column).
+  const theme = (await cookies()).get("theme")?.value === "dark" ? "dark" : "light";
   return (
-    <html lang="en" className={roboto.variable}>
+    <html lang="en" className={roboto.variable} data-theme={theme}>
       <body>
         <ToastProvider>
           <div className="app-bar">
@@ -35,15 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Suspense>
             <Header />
           </Suspense>
-          {children}
-          <footer className="site">
-            <span>Nakodu</span>
-            <a href="/rules">Rules</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
-            <a href="/child-safety">Child safety</a>
-            <a href="/delete-account">Delete account</a>
-          </footer>
+          <div className="shell">
+            <Suspense>
+              <LeftNav theme={theme} />
+            </Suspense>
+            <div className="shell-main">{children}</div>
+          </div>
         </ToastProvider>
       </body>
     </html>
