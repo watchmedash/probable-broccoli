@@ -11,7 +11,7 @@
   <!-- Shown inside the Nakodu app on the login and sign-up screens. The app reads the token through NakoduCaptcha. -->
   <div id="box"></div>
   <script>
-    var SITE_KEY = "TURNSTILE_SITE_KEY";
+    var SITE_KEY = "0x4AAAAAAFshuKwP7mwgwjPw";
     var theme = new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light";
     function send(name, value) { if (window.NakoduCaptcha) window.NakoduCaptcha[name](value || ""); }
     function ready() {
