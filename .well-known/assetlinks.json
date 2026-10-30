@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.nakodu.app",
+      "sha256_cert_fingerprints": ["45:20:7F:CC:6F:BD:D6:D2:C1:8D:9A:C3:1A:70:5E:F3:87:55:07:95:05:4C:2C:72:E5:67:89:93:0F:DE:B2:11"]
+    }
+  }
+]

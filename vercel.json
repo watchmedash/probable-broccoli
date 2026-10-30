@@ -1,0 +1,17 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/p/:id", "destination": "https://ofyhrdxecqwnhbchvitq.supabase.co/functions/v1/share?p=:id" }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "source": "/download/(.*)",
+      "headers": [{ "key": "Content-Type", "value": "application/vnd.android.package-archive" }]
+    }
+  ]
+}

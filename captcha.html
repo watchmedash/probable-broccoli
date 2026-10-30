@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checking</title>
+  <style>html,body{margin:0;background:transparent;display:flex;justify-content:center}</style>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=ready&render=explicit" async defer></script>
+</head>
+<body>
+  <!-- Shown inside the Nakodu app on the login and sign-up screens. The app reads the token through NakoduCaptcha. -->
+  <div id="box"></div>
+  <script>
+    var SITE_KEY = "TURNSTILE_SITE_KEY";
+    var theme = new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light";
+    function send(name, value) { if (window.NakoduCaptcha) window.NakoduCaptcha[name](value || ""); }
+    function ready() {
+      turnstile.render("#box", {
+        sitekey: SITE_KEY,
+        theme: theme,
+        callback: function (token) { send("onToken", token); },
+        "expired-callback": function () { send("onExpired"); },
+        "error-callback": function (code) { send("onError", String(code)); }
+      });
+    }
+  </script>
+</body>
+</html>
