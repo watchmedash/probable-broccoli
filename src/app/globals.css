@@ -83,7 +83,7 @@ img { max-width: 100%; }
 
 /* ------------------------------------------------------------------ layout */
 /* Full width: left column, the page, and a right column that scrolls on its own when it's taller than the screen. */
-.shell { display: grid; grid-template-columns: 264px minmax(0, 1fr); align-items: start; }
+.shell { --nav: 264px; display: grid; grid-template-columns: var(--nav) minmax(0, 1fr); align-items: start; }
 .shell-main { min-width: 0; grid-column: 2; grid-row: 1; }
 .leftnav { grid-column: 1; grid-row: 1; }
 .leftnav { scrollbar-width: thin; position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); padding: 12px 12px 24px; display: flex; flex-direction: column; gap: 4px; }
@@ -97,13 +97,11 @@ img { max-width: 100%; }
 .nav-small { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 12px; font-size: 12px; color: var(--muted); }
 .nav-small a:hover { text-decoration: underline; }
 .nav-back { display: none; }
-.nav-collapse { align-self: flex-start; margin: 0 0 4px 4px; }
-/* Folded: icons only. */
-.shell.collapsed { grid-template-columns: 64px minmax(0, 1fr); }
-.shell.collapsed .leftnav { padding: 12px 8px; }
-.shell.collapsed .nav-label, .shell.collapsed .nav-title, .shell.collapsed .nav-small { display: none; }
-.shell.collapsed .nav-link { justify-content: center; padding: 9px 0; }
-.shell.collapsed .nav-collapse { align-self: center; margin: 0 0 4px; }
+/* The menu button rides the line between the menu and the page. Hidden menu: only half of it peeks in from the edge. */
+.nav-collapse { position: fixed; z-index: 25; top: 72px; left: calc(var(--nav) - 17px); width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--outline); border-radius: 50%; background: var(--surface); color: var(--ink); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.08); transition: left .15s ease; }
+.nav-collapse:hover { background: var(--surface-2); }
+.shell.collapsed { --nav: 0px; }
+.shell.collapsed .leftnav { display: none; }
 /* Legal pages. */
 .doc { padding: 24px 28px; max-width: 860px; line-height: 1.65; }
 .panel.doc h1 { font-size: 28px; margin: 0 0 4px; }
@@ -131,9 +129,7 @@ img { max-width: 100%; }
   .nav-back { display: block; position: fixed; inset: 0; z-index: 39; background: rgba(0,0,0,.35); }
   .show-nav { display: inline-flex; }
   .nav-collapse { display: none; }
-  .shell.collapsed { grid-template-columns: minmax(0, 1fr); }
-  .shell.collapsed .nav-label, .shell.collapsed .nav-title, .shell.collapsed .nav-small { display: revert; }
-  .shell.collapsed .nav-link { justify-content: flex-start; padding: 9px 12px; }
+  .shell.collapsed .leftnav { display: flex; }
 }
 @media (max-width: 1000px) {
   .page { grid-template-columns: minmax(0, 1fr); padding: 0; gap: 0; }

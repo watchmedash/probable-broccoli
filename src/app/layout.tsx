@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { LeftNav } from "@/components/LeftNav";
+import { CollapseButton } from "@/components/NavParts";
 import { ToastProvider } from "@/components/Toast";
 import { SITE_URL } from "@/lib/config";
 
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Suspense>
               <LeftNav theme={theme} />
             </Suspense>
+            <CollapseButton />
             <div className="shell-main">{children}</div>
           </div>
         </ToastProvider>

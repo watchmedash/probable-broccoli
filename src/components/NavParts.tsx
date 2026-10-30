@@ -47,12 +47,12 @@ export function NavLink({ href, icon, label, exact }: { href: string; icon: Reac
   );
 }
 
-/** Folds the left column down to icons (wide screens). Remembered in a cookie. */
+/** Sits on the line between the menu and the page; hides or shows the whole menu (wide screens). Remembered in a cookie. */
 export function CollapseButton() {
   return (
     <button
-      className="icon-btn nav-collapse"
-      aria-label="Collapse or expand the menu"
+      className="nav-collapse"
+      aria-label="Hide or show the menu"
       onClick={() => {
         const shell = document.querySelector(".shell");
         const collapsed = !shell?.classList.contains("collapsed");

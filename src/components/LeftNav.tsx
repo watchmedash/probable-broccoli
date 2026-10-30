@@ -3,7 +3,7 @@ import { fetchHubs, myHubIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { HubIcon } from "./Avatars";
 import { Icon, I } from "./Icon";
-import { CollapseButton, NavDrawer, NavLink, ThemeSwitch } from "./NavParts";
+import { NavDrawer, NavLink, ThemeSwitch } from "./NavParts";
 
 /** The left column: feeds, hubs you're in, and the small print. On phones it opens from the header's menu button. */
 export async function LeftNav({ theme }: { theme: string }) {
@@ -13,7 +13,6 @@ export async function LeftNav({ theme }: { theme: string }) {
   const yours = hubs.filter(h => mine.includes(h.id));
   return (
     <NavDrawer>
-      <CollapseButton />
       <nav className="nav-group" aria-label="Feeds">
         <NavLink href="/" icon={<Icon icon={I.home} size={17} />} label="Home" exact />
         <NavLink href="/?feed=popular" icon={<Icon icon={I.popular} size={17} />} label="Popular" />
