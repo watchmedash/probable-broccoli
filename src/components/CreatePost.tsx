@@ -112,7 +112,7 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
         <label htmlFor="title">Title</label>
         <input id="title" value={title} maxLength={300} onChange={e => { setTitle(e.target.value); setError(null); }} />
       </div>
-      <MarkdownEditor id="body" label="Text (optional)" value={body} onChange={setBody} maxLength={40000} imagesAllowed={imagesAllowed} />
+      <MarkdownEditor id="body" label="Text (optional)" value={body} onChange={setBody} maxLength={50000} imagesAllowed={imagesAllowed} />
       {images.length > 0 && (
         <div className="thumbs">
           {images.map(u => (

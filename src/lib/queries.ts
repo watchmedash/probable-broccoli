@@ -41,6 +41,8 @@ export type FeedQuery = {
   offset?: number;
   /** People you blocked: their posts stay out of your feeds. */
   blocked?: string[];
+  /** True: only posts on people's profiles. False: only posts in hubs. */
+  profiles?: boolean;
 };
 
 export const parseSort = (s?: string): Sort => (s === "new" || s === "top" ? s : "hot");
@@ -57,6 +59,8 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   if (days) query = query.gte("created_at", new Date(Date.now() - days * 86400000).toISOString());
   if (q.hubId != null) query = query.eq("community_id", q.hubId);
   if (q.authorId) query = query.eq("author_id", q.authorId);
+  if (q.profiles === true) query = query.is("community_id", null);
+  if (q.profiles === false) query = query.not("community_id", "is", null);
   if (q.blocked?.length) query = query.not("author_id", "in", `(${q.blocked.join(",")})`);
   if (q.peopleIds) {
     const parts = [];

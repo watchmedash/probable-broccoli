@@ -13,10 +13,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const sb = await serverSupabase();
   const feed: Feed = params.feed === "popular" ? "popular" : params.feed === "following" && me ? "following" : "all";
 
-  // Popular: the best of the past week everywhere. Following: your hubs and the people you follow.
+  // Popular: the best of the past week in hubs. Following: your hubs and the people you follow.
+  // All: hub posts, with what people post on their profiles under its own Users tab.
+  const users = feed === "all" && params.sort === "users";
   let query: FeedQuery;
-  if (feed === "popular") query = { sort: "top", range: "week" };
-  else query = { sort: parseSort(params.sort), range: parseRange(params.t) };
+  if (feed === "popular") query = { sort: "top", range: "week", profiles: false };
+  else if (users) query = { sort: "new", profiles: true };
+  else query = { sort: parseSort(params.sort), range: parseRange(params.t), profiles: feed === "all" ? false : undefined };
   if (feed === "following" && me) {
     const [hubIds, peopleIds] = await Promise.all([myHubIds(sb, me.id), followingIds(sb, me.id)]);
     query = { ...query, hubIds, peopleIds };
@@ -33,14 +36,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <Link key={f} href={f === "all" ? "/" : `/?feed=${f}`} className={feed === f ? "on" : ""} aria-current={feed === f ? "page" : undefined}>{label}</Link>
           ))}
         </nav>
-        {feed !== "popular" && <SortTabs base="/" sort={query.sort} range={query.range ?? "all"} extra={feed === "following" ? { feed } : {}} />}
+        {feed !== "popular" && <SortTabs base="/" sort={query.sort} range={query.range ?? "all"} extra={feed === "following" ? { feed } : {}} users={feed === "all" ? users : undefined} />}
         <FeedList
           initial={page.posts}
           next={page.next}
           query={query}
           showHub
           signedIn={!!me}
-          empty={feed === "following" ? <>Join some hubs or follow people and their posts show up here. <Link href="/hubs" className="linkish">Find hubs</Link></> : "Nothing here yet."}
+          empty={feed === "following" ? <>Join some hubs or follow people and their posts show up here. <Link href="/hubs" className="linkish">Find hubs</Link></> : users ? "Posts people make on their profiles show up here." : "Nothing here yet."}
         />
       </div>
       <aside className="side"><RecentPosts /></aside>

@@ -23,7 +23,7 @@ export function EditPost({ id, title: t0, body: b0, image: i0, gallery }: { id: 
         <label htmlFor="title">Title</label>
         <input id="title" value={title} maxLength={300} onChange={e => setTitle(e.target.value)} />
       </div>
-      <MarkdownEditor id="body" label="Text" value={body} onChange={setBody} maxLength={40000} />
+      <MarkdownEditor id="body" label="Text" value={body} onChange={setBody} maxLength={50000} />
       {!gallery && (
         <div className="toolbar" style={{ alignItems: "center" }}>
           {image && (

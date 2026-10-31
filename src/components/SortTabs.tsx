@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { RANGES, type Range, type Sort } from "@/lib/queries";
 
-/** Hot, New, Top (with a time range under Top), as links so every view has its own address. */
-export function SortTabs({ base, sort, range, extra = {}, defaultSort = "hot" }: { base: string; sort: Sort; range: Range; extra?: Record<string, string>; defaultSort?: Sort }) {
+/** Hot, New, Top (with a time range under Top), as links so every view has its own address. With [users], a Users tab too. */
+export function SortTabs({ base, sort, range, extra = {}, defaultSort = "hot", users }: { base: string; sort: Sort; range: Range; extra?: Record<string, string>; defaultSort?: Sort; users?: boolean }) {
   const url = (p: Record<string, string>) => {
     const q = new URLSearchParams({ ...extra, ...p });
     for (const [k, v] of [...q.entries()]) if (!v || (k === "sort" && v === defaultSort)) q.delete(k);
@@ -13,12 +13,13 @@ export function SortTabs({ base, sort, range, extra = {}, defaultSort = "hot" }:
     <>
       <nav className="tabs" aria-label="Sort">
         {(["hot", "new", "top"] as Sort[]).map(s => (
-          <Link key={s} href={url({ sort: s })} className={sort === s ? "on" : ""} aria-current={sort === s ? "page" : undefined}>
+          <Link key={s} href={url({ sort: s })} className={sort === s && !users ? "on" : ""} aria-current={sort === s && !users ? "page" : undefined}>
             {s[0].toUpperCase() + s.slice(1)}
           </Link>
         ))}
+        {users !== undefined && <Link href={url({ sort: "users" })} className={users ? "on" : ""} aria-current={users ? "page" : undefined}>Users</Link>}
       </nav>
-      {sort === "top" && (
+      {sort === "top" && !users && (
         <nav className="subtabs" aria-label="Time range">
           {(Object.keys(RANGES) as Range[]).map(r => (
             <Link key={r} href={url({ sort: "top", t: r })} className={range === r ? "on" : ""}>{RANGES[r].label}</Link>
