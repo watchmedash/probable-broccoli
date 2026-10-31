@@ -7,11 +7,11 @@ import { firstYouTube } from "@/lib/youtube";
 import { Avatar, HubIcon } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { ShareButton, Votes } from "./VoteBar";
-import { Covered, YouTube } from "./Media";
+import { YouTube } from "./Media";
 
 /**
  * A post in a list. Mixed feeds show the hub; a hub's own feed and profiles show the author
- * (like the app). Prefixes only show on the post page.
+ * (like the app). Prefixes and tags only show on the post page.
  */
 export function PostCard({ post, showHub, signedIn }: { post: Post; showHub: boolean; signedIn: boolean }) {
   const href = `/p/${post.id}`;
@@ -34,12 +34,11 @@ export function PostCard({ post, showHub, signedIn }: { post: Post; showHub: boo
         )}
         <span>{timeAgo(post.created_at)}</span>
         {post.pinned_at && !showHub && <span className="tag pin"><Icon icon={I.pin} size={11} /> Pinned</span>}
-        {post.spoiler && <span className="tag spoiler">SPOILER</span>}
-        {post.mature && <span className="tag nsfw">18+</span>}
       </div>
       <Link href={href} className="card-title">{post.title}</Link>
-      <Link href={href} style={{ display: "block" }}>
-        <Covered spoiler={post.spoiler} mature={post.mature}>
+      {/* Spoilers and 18+ posts look like any other post with no preview; they're covered on the post page. */}
+      {!post.spoiler && !post.mature && (
+        <Link href={href} style={{ display: "block" }}>
           {images.length > 0 ? (
             <div className="media">
               <img src={images[0]} alt="" loading="lazy" />
@@ -49,8 +48,8 @@ export function PostCard({ post, showHub, signedIn }: { post: Post; showHub: boo
             <YouTube id={yt} title={post.title} playInline={false} />
           ) : null}
           {preview && images.length === 0 && <p className="card-body">{preview}</p>}
-        </Covered>
-      </Link>
+        </Link>
+      )}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
         <Link href={`${href}#comments`} className="act" aria-label={countLabel(post.comment_count, "comment")}>
