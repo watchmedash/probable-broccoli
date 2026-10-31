@@ -15,7 +15,8 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-  await sb.auth.getUser();
+  // Reads the cookie and only calls out when the token has expired. Pages check who you are themselves.
+  await sb.auth.getSession();
   return response;
 }
 

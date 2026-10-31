@@ -310,3 +310,7 @@ img { max-width: 100%; }
 .md-status { display: flex; justify-content: space-between; gap: 12px; min-height: 16px; }
 .md-status .error { margin: 0; }
 .md img { max-width: 100%; height: auto; }
+
+/* Placeholder while a page loads */
+.skeleton { display: flex; flex-direction: column; gap: 10px; }
+.skeleton span { display: block; height: 12px; border-radius: 2px; background: var(--surface-2); }

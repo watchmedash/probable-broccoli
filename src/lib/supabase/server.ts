@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { SUPABASE_KEY, SUPABASE_URL } from "../config";
 
 /** A Supabase client for server components, acting as whoever is logged in (or as a guest). */
@@ -18,12 +19,12 @@ export async function serverSupabase() {
   });
 }
 
-/** The logged-in user's id and username, or null for guests. */
-export async function currentUser() {
+/** The logged-in user's id and username, or null for guests. Asked once per page, however many parts need it. */
+export const currentUser = cache(async () => {
   const sb = await serverSupabase();
   const { data } = await sb.auth.getUser();
   const u = data.user;
   if (!u) return null;
   const username = (u.user_metadata?.username as string | undefined) ?? u.email?.split("@")[0] ?? "me";
   return { id: u.id, username };
-}
+});

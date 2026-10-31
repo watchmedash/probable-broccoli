@@ -29,6 +29,7 @@ export const RANGES: Record<Range, { label: string; days: number | null }> = {
   all: { label: "All time", days: null },
 };
 const SORT_COLUMN: Record<Sort, string> = { hot: "hot", new: "created_at", top: "score" };
+const FEED_BODY_CHARS = 2000;
 
 export type FeedQuery = {
   sort: Sort;
@@ -75,7 +76,8 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   if (q.sort !== "new") query = query.order("created_at", { ascending: false });
   const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
   if (error) throw error;
-  const posts = (data ?? []) as unknown as Post[];
+  // Lists only show a preview, so a long story doesn't get sent to the browser in full.
+  const posts = ((data ?? []) as unknown as Post[]).map(p => (p.body.length > FEED_BODY_CHARS ? { ...p, body: p.body.slice(0, FEED_BODY_CHARS) } : p));
   return { posts, next: posts.length === PAGE_SIZE ? offset + PAGE_SIZE : null };
 }
 
