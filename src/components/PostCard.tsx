@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Post } from "@/lib/types";
 import { myVote } from "@/lib/types";
 import { countLabel, plainText, timeAgo } from "@/lib/format";
+import { firstBodyImage } from "@/lib/mdedit";
 import { firstYouTube } from "@/lib/youtube";
 import { Avatar, HubIcon } from "./Avatars";
 import { Icon, I } from "./Icon";
@@ -15,7 +16,8 @@ import { YouTube } from "./Media";
  */
 export function PostCard({ post, showHub, signedIn }: { post: Post; showHub: boolean; signedIn: boolean }) {
   const href = `/p/${post.id}`;
-  const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+  const inText = firstBodyImage(post.body);
+  const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : inText ? [inText] : [];
   const yt = images.length === 0 ? firstYouTube(post.body) : null;
   const preview = plainText(yt ? post.body.replace(/https?:\/\/\S+/g, "") : post.body, 300);
   return (

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { Composer, MessageList } from "./ChatView";
@@ -10,14 +11,20 @@ export function ModmailView({ id, me, mine, initial, closed: c0 }: { id: number;
   const [msgs, setMsgs] = useState(initial);
   const [closed, setClosed] = useState(c0);
   const sb = browserSupabase();
+  const router = useRouter();
+  // Supabase only sends a call once it's awaited; then the header can drop the badge.
+  const markRead = useCallback(async () => {
+    await sb.rpc("mark_thread_read", { thread: id });
+    router.refresh();
+  }, [sb, id, router]);
   useEffect(() => {
-    sb.rpc("mark_thread_read", { thread: id });
+    markRead();
     const t = window.setInterval(async () => {
       const { data } = await sb.from("hub_thread_messages").select("id,body,from_mod,created_at,sender_id,sender:profiles(id,username,avatar_url)").eq("thread_id", id).order("created_at");
-      if (data && data.length !== msgs.length) { setMsgs(data as never); sb.rpc("mark_thread_read", { thread: id }); }
+      if (data && data.length !== msgs.length) { setMsgs(data as never); markRead(); }
     }, 6000);
     return () => window.clearInterval(t);
-  }, [id, msgs.length, sb]);
+  }, [id, msgs.length, sb, markRead]);
 
   return (
     <>

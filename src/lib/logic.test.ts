@@ -4,6 +4,7 @@ import { nextVote, applyVote } from "./votes";
 import { buildTree, type CommentSort } from "./comments";
 import { renderMarkdown } from "./markdown";
 import { youTubeId } from "./youtube";
+import { firstBodyImage, imageMarkdown, isImageUrl, linePrefix, wrapSelection } from "./mdedit";
 
 describe("timeAgo", () => {
   const now = new Date("2026-10-30T12:00:00Z");
@@ -93,5 +94,35 @@ describe("plainText", () => {
   it("keeps underscores in links and words", () => {
     expect(plainText("see https://en.wikipedia.org/wiki/List_of_common_misconceptions now")).toBe("see https://en.wikipedia.org/wiki/List_of_common_misconceptions now");
     expect(plainText("snake_case **bold** _it_ ~~gone~~")).toBe("snake_case bold it gone");
+  });
+});
+
+describe("post editor", () => {
+  it("wraps a selection and takes the markers off again", () => {
+    const on = wrapSelection("a word b", 2, 6, "**");
+    expect(on).toEqual({ text: "a **word** b", start: 4, end: 8 });
+    expect(wrapSelection(on.text, on.start, on.end, "**")).toEqual({ text: "a word b", start: 2, end: 6 });
+  });
+  it("prefixes every selected line and numbers lists", () => {
+    expect(linePrefix("one\ntwo", 0, 7, "- ").text).toBe("- one\n- two");
+    expect(linePrefix("- one\n- two", 0, 11, "- ").text).toBe("one\ntwo");
+    expect(linePrefix("one\ntwo", 0, 7, "1. ", true).text).toBe("1. one\n2. two");
+  });
+  it("puts a picture on its own line at the cursor", () => {
+    const e = imageMarkdown("hello", 5, 5, "https://x.co/a.png");
+    expect(e.text).toBe("hello\n\n![](https://x.co/a.png)\n\n");
+    expect(e.start).toBe(e.text.length);
+  });
+  it("only takes https picture addresses", () => {
+    expect(isImageUrl("https://x.co/a.JPG?w=1", true)).toBe(true);
+    expect(isImageUrl("https://x.co/page", true)).toBe(false);
+    expect(isImageUrl("https://x.co/page", false)).toBe(true);
+    expect(isImageUrl("http://x.co/a.png", false)).toBe(false);
+    expect(isImageUrl("javascript:alert(1)", false)).toBe(false);
+    expect(isImageUrl("https://x.co/a).png", false)).toBe(false);
+  });
+  it("finds the first picture in the text", () => {
+    expect(firstBodyImage("hi ![](https://x.co/a.png) ![b](https://x.co/b.png)")).toBe("https://x.co/a.png");
+    expect(firstBodyImage("no pictures")).toBeNull();
   });
 });

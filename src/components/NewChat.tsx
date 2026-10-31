@@ -20,7 +20,7 @@ export function NewChat({ to }: { to: string }) {
       </div>
       <div className="field">
         <label htmlFor="msg">Message</label>
-        <textarea id="msg" value={body} maxLength={4000} onChange={e => setBody(e.target.value)} style={{ minHeight: 120 }} />
+        <textarea id="msg" value={body} maxLength={2000} onChange={e => setBody(e.target.value)} style={{ minHeight: 120 }} />
       </div>
       <p className="muted small" style={{ margin: 0 }}>They can accept or decline. Until they accept, you can&apos;t send more.</p>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}

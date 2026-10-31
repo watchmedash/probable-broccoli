@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { timeAgo } from "@/lib/format";
@@ -53,7 +53,7 @@ export function Composer({ onSend, placeholder = "Message" }: { onSend: (text: s
           placeholder={placeholder}
           aria-label={placeholder}
           rows={1}
-          maxLength={4000}
+          maxLength={2000}
           style={{ flex: 1, resize: "none", padding: "10px 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", minHeight: 42 }}
         />
         <button className="btn" disabled={busy || !text.trim()} onClick={send} style={{ height: 42 }}>Send</button>
@@ -68,17 +68,23 @@ export function ChatView({ id, me, initial, status, incomingRequest }: { id: num
   const router = useRouter();
   const sb = browserSupabase();
 
+  // Supabase only sends a call once it's awaited; then the header can drop the badge.
+  const markRead = useCallback(async () => {
+    await sb.rpc("mark_conversation_read", { conversation: id });
+    router.refresh();
+  }, [sb, id, router]);
+
   useEffect(() => {
-    sb.rpc("mark_conversation_read", { conversation: id });
+    markRead();
     const t = window.setInterval(async () => {
       const { data } = await sb.from("messages").select("id,sender_id,body,created_at").eq("conversation_id", id).order("created_at").limit(500);
       if (data && data.length !== msgs.length) {
         setMsgs(data);
-        sb.rpc("mark_conversation_read", { conversation: id });
+        markRead();
       }
     }, 5000);
     return () => window.clearInterval(t);
-  }, [id, msgs.length, sb]);
+  }, [id, msgs.length, sb, markRead]);
 
   async function answer(accept: boolean) {
     const { error } = await sb.from("conversations").update({ status: accept ? "accepted" : "declined" }).eq("id", id);

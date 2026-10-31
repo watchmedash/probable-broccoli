@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
-import { renderMarkdown } from "@/lib/markdown";
 import type { Flair, Hub } from "@/lib/types";
 import { Icon, I } from "./Icon";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 const MAX_IMAGES = 10;
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -15,7 +15,6 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
   const [hubId, setHubId] = useState<number | null>(initialHub);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [preview, setPreview] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [pollOn, setPollOn] = useState(false);
@@ -113,17 +112,7 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
         <label htmlFor="title">Title</label>
         <input id="title" value={title} maxLength={300} onChange={e => { setTitle(e.target.value); setError(null); }} />
       </div>
-      <div className="field">
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <label htmlFor="body" style={{ flex: 1 }}>Text (optional)</label>
-          <button type="button" className="linkish small" onClick={() => setPreview(p => !p)}>{preview ? "Edit" : "Preview"}</button>
-        </div>
-        {preview ? (
-          <div className="md" style={{ minHeight: 160, padding: 12, border: "1px solid var(--outline)", borderRadius: 4 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(body || "*Nothing to preview*") }} />
-        ) : (
-          <textarea id="body" value={body} maxLength={40000} onChange={e => setBody(e.target.value)} placeholder="**bold**, *italic*, [links](https://...), > quotes, - lists" />
-        )}
-      </div>
+      <MarkdownEditor id="body" label="Text (optional)" value={body} onChange={setBody} maxLength={40000} imagesAllowed={imagesAllowed} />
       {images.length > 0 && (
         <div className="thumbs">
           {images.map(u => (

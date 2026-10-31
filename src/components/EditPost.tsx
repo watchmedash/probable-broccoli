@@ -4,16 +4,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
-import { renderMarkdown } from "@/lib/markdown";
 import { uploadImage } from "@/lib/upload";
 import { Icon, I } from "./Icon";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 /** Authors can change the title, the text and the picture. The hub and any poll stay as posted. */
 export function EditPost({ id, title: t0, body: b0, image: i0, gallery }: { id: number; title: string; body: string; image: string | null; gallery: boolean }) {
   const [title, setTitle] = useState(t0);
   const [body, setBody] = useState(b0);
   const [image, setImage] = useState(i0);
-  const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -24,15 +23,7 @@ export function EditPost({ id, title: t0, body: b0, image: i0, gallery }: { id: 
         <label htmlFor="title">Title</label>
         <input id="title" value={title} maxLength={300} onChange={e => setTitle(e.target.value)} />
       </div>
-      <div className="field">
-        <div style={{ display: "flex" }}>
-          <label htmlFor="body" style={{ flex: 1 }}>Text</label>
-          <button type="button" className="linkish small" onClick={() => setPreview(p => !p)}>{preview ? "Edit" : "Preview"}</button>
-        </div>
-        {preview
-          ? <div className="md" style={{ minHeight: 160, padding: 12, border: "1px solid var(--outline)", borderRadius: 4 }} dangerouslySetInnerHTML={{ __html: renderMarkdown(body || "*Nothing to preview*") }} />
-          : <textarea id="body" value={body} maxLength={40000} onChange={e => setBody(e.target.value)} />}
-      </div>
+      <MarkdownEditor id="body" label="Text" value={body} onChange={setBody} maxLength={40000} />
       {!gallery && (
         <div className="toolbar" style={{ alignItems: "center" }}>
           {image && (

@@ -126,7 +126,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
             <label className="btn quiet">{s.banner_url ? "Change cover" : "Add a cover"}<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { upload(e.target.files?.[0], "banner_url"); e.target.value = ""; }} /></label>
             {s.banner_url && <button className="linkish small" onClick={() => set("banner_url", null)}>Remove cover</button>}
           </div>
-          <div className="field"><label htmlFor="rules">Rules (one per line, shown as you write them)</label><textarea id="rules" value={s.rules} maxLength={4000} onChange={e => set("rules", e.target.value)} /></div>
+          <div className="field"><label htmlFor="rules">Rules (one per line, shown as you write them)</label><textarea id="rules" value={s.rules} maxLength={2000} onChange={e => set("rules", e.target.value)} /></div>
           <Choice label="Who can see and join" value={s.privacy} options={[["public", "Public: anyone can join"], ["private", "Private: people ask to join"]]} onChange={v => set("privacy", v)} />
           <Toggle label="Only members see posts" on={s.members_only} onChange={v => set("members_only", v)} />
           <Toggle label="18+ hub" help="Only shown to adults who turned on 18+ hubs." on={s.is_mature} onChange={v => set("is_mature", v)} />

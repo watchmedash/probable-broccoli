@@ -17,9 +17,9 @@ export default async function NotificationsPage() {
   return (
     <main className="page single">
       <div className="panel" style={{ overflow: "hidden" }}>
+        {unread && <MarkAllRead />}
         <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--line)" }}>
           <h1 style={{ margin: 0, fontSize: 22, flex: 1 }}>Notifications</h1>
-          {unread && <MarkAllRead />}
         </div>
         {items.length === 0 && <div className="empty">Nothing yet. Replies, mentions and follows show up here.</div>}
         {items.map(n => {

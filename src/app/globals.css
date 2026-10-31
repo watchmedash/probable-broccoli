@@ -294,3 +294,19 @@ img { max-width: 100%; }
 .notif.unread { background: var(--blue-soft); }
 .more-row { display: flex; justify-content: center; padding: 16px; }
 
+
+/* Post editor */
+.md-editor { border: 1px solid var(--outline); border-radius: 4px; background: var(--surface); }
+.md-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.md-tool { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: none; color: var(--ink); cursor: pointer; margin: 0; }
+.md-tool:hover { background: var(--surface-2); }
+.md-tool-text { width: auto; padding: 0 8px; font-size: 13px; }
+.md-preview { margin-left: auto; padding: 0 6px; }
+.md-url { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid var(--line); }
+.md-url input { flex: 1; min-width: 0; height: 38px; }
+.md-url .btn { height: 38px; }
+.md-editor textarea { display: block; width: 100%; min-height: 300px; border: 0; border-radius: 0 0 4px 4px; background: none; resize: vertical; }
+.md-preview-body { min-height: 300px; padding: 12px; }
+.md-status { display: flex; justify-content: space-between; gap: 12px; min-height: 16px; }
+.md-status .error { margin: 0; }
+.md img { max-width: 100%; height: auto; }
