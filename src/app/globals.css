@@ -177,10 +177,13 @@ img { max-width: 100%; }
 .media { position: relative; margin: 8px 0; border-radius: 1px; overflow: hidden; background: var(--surface-2); display: flex; justify-content: center; }
 .media img { display: block; max-height: 540px; width: auto; max-width: 100%; object-fit: contain; }
 .media .count { position: absolute; right: 8px; top: 8px; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 3px; }
-.cover { position: relative; }
-.cover.blur img, .cover.blur .card-body, .cover.blur .yt { filter: blur(24px); }
-.cover .reveal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.cover .reveal button { background: rgba(17,24,39,.85); color: #fff; border: 0; padding: 8px 14px; border-radius: var(--radius); font-weight: 600; cursor: pointer; }
+.cover { position: relative; overflow: hidden; }
+.cover.blur { min-height: 56px; }
+.cover.blur img, .cover.blur .yt { filter: blur(24px); }
+.cover.blur .card-body, .cover.blur .md { filter: blur(7px); user-select: none; }
+.cover.blur .md img { filter: blur(24px); }
+.cover .reveal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.cover .reveal button { pointer-events: auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: rgba(17,24,39,.85); color: #fff; border: 0; border-radius: 50%; cursor: pointer; }
 .yt { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; margin: 8px 0; border-radius: 1px; overflow: hidden; }
 .yt img { width: 100%; height: 100%; object-fit: cover; display: block; max-height: none; }
 .yt .play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
@@ -247,9 +250,9 @@ img { max-width: 100%; }
 .c-deleted { color: var(--muted); font-style: italic; }
 
 /* ------------------------------------------------------------------ hub & profile heads */
-.head { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; }
+.head { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; }
 @media (max-width: 1000px) { .head { border-left: 0; border-right: 0; border-radius: 0; margin-bottom: 0; } }
-.head .banner { height: 160px; background: var(--blue) center/cover no-repeat; }
+.head .banner { border-radius: var(--radius) var(--radius) 0 0; height: 160px; background: var(--blue) center/cover no-repeat; }
 .head-row { display: flex; align-items: flex-end; gap: 16px; padding: 0 16px 14px; margin-top: -32px; }
 .head-row.no-banner { margin-top: 0; padding-top: 16px; align-items: center; }
 .head-row .hub-icon, .head-row .avatar { border: 4px solid var(--surface); }

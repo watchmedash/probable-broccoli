@@ -119,8 +119,8 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       {focused && (
         <div className="row">
-          <button className="btn quiet" onClick={() => { setText(initial); setFocused(false); onDone?.(); }}>Cancel</button>
-          <button className="btn" disabled={!text.trim() || busy} onClick={send}>{editId ? "Save" : parentId ? "Reply" : "Comment"}</button>
+          <button className="icon-btn" aria-label="Cancel" onClick={() => { setText(initial); setFocused(false); onDone?.(); }}><Icon icon={I.close} size={15} /></button>
+          <button className="btn" aria-label={editId ? "Save" : parentId ? "Reply" : "Comment"} style={{ width: 46, padding: 0 }} disabled={!text.trim() || busy} onClick={send}><Icon icon={editId ? I.check : I.send} size={15} /></button>
         </div>
       )}
     </div>

@@ -61,6 +61,7 @@ export function ShareButton({ id }: { id: number }) {
   return (
     <button
       className="act"
+      aria-label="Share"
       onClick={async e => {
         e.preventDefault();
         e.stopPropagation();
@@ -73,7 +74,7 @@ export function ShareButton({ id }: { id: number }) {
         }
       }}
     >
-      <Icon icon={I.share} size={14} /> <span className="hide-sm">Share</span>
+      <Icon icon={I.share} size={14} />
     </button>
   );
 }

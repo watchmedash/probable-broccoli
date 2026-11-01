@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { Avatar } from "@/components/Avatars";
+import { Icon, I } from "@/components/Icon";
 import { FeedList } from "@/components/FeedList";
 import { ProfileActions, SelfActions } from "@/components/ProfileActions";
 import { SortTabs } from "@/components/SortTabs";
@@ -54,7 +55,10 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               <h1>u/{profile.username}</h1>
               <span className="muted small">
                 {profile.banned_at ? "Banned from Nakodu" : `${sparks === 1 ? "1 spark" : `${sparks} sparks`}   ${profile.created_at ? `Joined ${monthYear(profile.created_at)}` : ""}`}
-                <br />{followers === 1 ? "1 follower" : `${followers} followers`}   {followingCount} following
+              </span>
+              <span className="muted small" style={{ display: "flex", gap: 14, marginTop: 2 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }} aria-label={followers === 1 ? "1 follower" : `${followers} followers`} title="Followers"><Icon icon={I.users} size={13} /> {followers}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }} aria-label={`${followingCount} following`} title="Following"><Icon icon={I.following} size={13} /> {followingCount}</span>
               </span>
             </div>
             <div style={{ paddingTop: profile.cover_url ? 36 : 0 }}>

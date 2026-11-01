@@ -2,7 +2,7 @@ import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
   faArrowUp, faArrowDown, faMagnifyingGlass, faPlus, faBell, faShare, faEllipsis, faFlag, faLock, faThumbtack,
   faArrowLeft, faImage, faXmark, faCheck, faRightFromBracket, faGear, faUser, faUsers, faHouse, faFire,
-  faChartLine, faEye, faEyeSlash, faTrash, faPen, faReply, faCopy, faKey, faUserPlus, faUserCheck, faEnvelope,
+  faChartLine, faEye, faEyeSlash, faTrash, faPen, faReply, faCopy, faKey, faUserPlus, faUserCheck, faEnvelope, faPaperPlane,
 } from "@fortawesome/free-solid-svg-icons";
 import { faComment, faBookmark, faImage as faImageOutline } from "@fortawesome/free-regular-svg-icons";
 
@@ -13,7 +13,7 @@ export const I = {
   imageOutline: faImageOutline, close: faXmark, check: faCheck, logout: faRightFromBracket, settings: faGear,
   user: faUser, users: faUsers, home: faHouse, hot: faFire, popular: faChartLine, eye: faEye, eyeOff: faEyeSlash,
   trash: faTrash, edit: faPen, reply: faReply, copy: faCopy, key: faKey, follow: faUserPlus, following: faUserCheck,
-  mail: faEnvelope, comment: faComment, save: faBookmark,
+  mail: faEnvelope, send: faPaperPlane, comment: faComment, save: faBookmark,
 } satisfies Record<string, IconDefinition>;
 
 export function Icon({ icon, size = 16, className, label }: { icon: IconDefinition; size?: number; className?: string; label?: string }) {

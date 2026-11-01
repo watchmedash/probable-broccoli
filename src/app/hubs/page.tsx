@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HubIcon } from "@/components/Avatars";
+import { Icon, I } from "@/components/Icon";
 import { JoinButton } from "@/components/JoinButton";
 import { fetchHubs, myHubIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
@@ -23,7 +24,7 @@ export default async function HubsPage({ searchParams }: { searchParams: Promise
       <div className="panel" style={{ overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--line)" }}>
           <h1 style={{ margin: 0, fontSize: 22, flex: 1 }}>Hubs</h1>
-          {me && <Link href="/hubs/new" className="btn ghost"><span aria-hidden>+</span> Create</Link>}
+          {me && <Link href="/hubs/new" className="icon-btn" aria-label="Create a hub" title="Create a hub"><Icon icon={I.plus} size={18} /></Link>}
         </div>
         {me && (
           <nav className="tabs" aria-label="Hubs">

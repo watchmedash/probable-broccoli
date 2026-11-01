@@ -2,8 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import type { VideoLink } from "@/lib/video";
+import { Icon, I } from "./Icon";
 
-/** Spoilers and 18+ posts stay blurred until tapped, like the app. */
+/** Spoilers and 18+ posts stay blurred until the eye is tapped. */
 export function Covered({ spoiler, mature, children }: { spoiler: boolean; mature: boolean; children: React.ReactNode }) {
   const [shown, setShown] = useState(false);
   if (!(spoiler || mature) || shown) return <>{children}</>;
@@ -11,8 +12,8 @@ export function Covered({ spoiler, mature, children }: { spoiler: boolean; matur
     <div className="cover blur">
       {children}
       <div className="reveal">
-        <button onClick={e => { e.preventDefault(); e.stopPropagation(); setShown(true); }}>
-          {mature ? "Show 18+ post" : "Show spoiler"}
+        <button aria-label={mature ? "Show 18+ post" : "Show spoiler"} onClick={e => { e.preventDefault(); e.stopPropagation(); setShown(true); }}>
+          <Icon icon={I.eye} size={18} />
         </button>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
+import { Icon, I } from "./Icon";
 import { useToast } from "./Toast";
 
 /** Join or leave a hub. Private hubs take a request instead. */
@@ -46,7 +47,10 @@ export function FollowButton({ userId, following, signedIn }: { userId: string; 
   const toast = useToast();
   return (
     <button
-      className={`btn ${on ? "quiet" : ""}`}
+      className="icon-btn"
+      style={on ? undefined : { color: "var(--blue)" }}
+      aria-label={on ? "Unfollow" : "Follow"}
+      aria-pressed={on}
       onClick={async () => {
         if (!signedIn) return router.push(`/login?next=${encodeURIComponent(location.pathname)}`);
         const sb = browserSupabase();
@@ -58,7 +62,7 @@ export function FollowButton({ userId, following, signedIn }: { userId: string; 
         if (res.error) { setOn(on); toast(errorMessage(res.error)); }
       }}
     >
-      {on ? "Following" : "Follow"}
+      <Icon icon={on ? I.following : I.follow} size={18} />
     </button>
   );
 }

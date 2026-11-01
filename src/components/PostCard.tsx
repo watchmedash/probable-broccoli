@@ -14,7 +14,7 @@ import { Icon, I } from "./Icon";
 import { JoinButton } from "./JoinButton";
 import { PostMenu } from "./PostMenu";
 import { ShareButton, Votes } from "./VoteBar";
-import { VideoPlayer, YouTube } from "./Media";
+import { Covered, VideoPlayer, YouTube } from "./Media";
 
 /**
  * A post in a list. Mixed feeds show the hub; a hub's own feed and profiles show the author
@@ -73,8 +73,9 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </span>
       </div>
       <Link href={href} className="card-title">{post.title}</Link>
-      {/* Spoilers and 18+ posts look like any other post with no preview; they're covered on the post page. */}
-      {!post.spoiler && !post.mature && (
+      {/* Spoilers and 18+ posts stay blurred until the eye is tapped, with no label to announce them. */}
+      {(images.length > 0 || yt || video || preview) && (
+        <Covered spoiler={post.spoiler} mature={post.mature}>
         <Link href={href} style={{ display: "block" }}>
           {images.length > 0 ? (
             <div className="media">
@@ -88,6 +89,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
           ) : null}
           {preview && images.length === 0 && <p className="card-body">{preview}</p>}
         </Link>
+        </Covered>
       )}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />

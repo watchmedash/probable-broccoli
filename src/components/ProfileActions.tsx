@@ -82,8 +82,8 @@ export function SelfActions({ hasCover }: { hasCover: boolean }) {
   }
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <label className="btn quiet" aria-disabled={busy}>Change picture<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "avatar_url"); e.target.value = ""; }} /></label>
-      <label className="btn quiet" aria-disabled={busy}>{hasCover ? "Change cover" : "Add a cover"}<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "cover_url"); e.target.value = ""; }} /></label>
+      <label className="icon-btn" aria-label="Change picture" title="Change picture" aria-disabled={busy}><Icon icon={I.edit} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "avatar_url"); e.target.value = ""; }} /></label>
+      <label className="icon-btn" aria-label={hasCover ? "Change cover" : "Add a cover"} title={hasCover ? "Change cover" : "Add a cover"} aria-disabled={busy}><Icon icon={I.image} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "cover_url"); e.target.value = ""; }} /></label>
     </div>
   );
 }

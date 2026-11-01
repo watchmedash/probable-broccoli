@@ -76,7 +76,7 @@ export function Composer({ onSend, placeholder = "Message", top }: { onSend: (te
           maxLength={2000}
           style={{ flex: 1, resize: "none", padding: "10px 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", minHeight: 42, boxSizing: "border-box" }}
         />
-        <button className="btn" disabled={busy || !text.trim()} onClick={send} style={{ height: 42 }}>Send</button>
+        <button className="btn" aria-label="Send" disabled={busy || !text.trim()} onClick={send} style={{ height: 42, width: 46, padding: 0 }}><Icon icon={I.send} size={16} /></button>
       </div>
     </div>
   );
@@ -119,8 +119,8 @@ function BubbleMenu({ mine, onReact, onReply, onReport, onDelete }: { mine: bool
   );
 }
 
-export function ChatView({ id, me, other, initial, status, incomingRequest, otherRead: read0, startedByMe }: {
-  id: number; me: string; other: string | null; initial: Msg[]; status: string; incomingRequest: boolean; otherRead: string | null; startedByMe: boolean;
+export function ChatView({ id, me, other, initial, status, incomingRequest, otherRead: read0, startedByMe, hiddenAt }: {
+  id: number; me: string; other: string | null; initial: Msg[]; status: string; incomingRequest: boolean; otherRead: string | null; startedByMe: boolean; hiddenAt: string | null;
 }) {
   const [msgs, setMsgs] = useState(initial);
   const [state, setState] = useState(status);
@@ -139,7 +139,8 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
   }, [sb, id, router]);
 
   const reload = useCallback(async () => {
-    const { data } = await sb.from("messages").select(MESSAGE_COLUMNS).eq("conversation_id", id).order("created_at").limit(500);
+    // A chat you deleted on your side restarts from the next new message.
+    const { data } = await sb.from("messages").select(MESSAGE_COLUMNS).eq("conversation_id", id).gt("created_at", hiddenAt ?? "-infinity").order("created_at").limit(500);
     if (!data) return false;
     const next = JSON.stringify(data);
     if (next === lastSeen.current) return false;
@@ -147,7 +148,7 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
     lastSeen.current = next;
     setMsgs(data as Msg[]);
     return grew;
-  }, [sb, id]);
+  }, [sb, id, hiddenAt]);
 
   useEffect(() => {
     markRead();
