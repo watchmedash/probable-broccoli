@@ -7,11 +7,12 @@ import { myVote } from "@/lib/types";
 import { countLabel, plainText, timeAgo } from "@/lib/format";
 import { firstBodyImage } from "@/lib/mdedit";
 import type { Viewer } from "@/lib/queries";
-import { firstVideo } from "@/lib/video";
+import { firstVideo, withoutBareLink } from "@/lib/video";
 import { firstYouTube } from "@/lib/youtube";
 import { Avatar, HubIcon } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { JoinButton } from "./JoinButton";
+import { LinkCard } from "./LinkCard";
 import { PostMenu } from "./PostMenu";
 import { ShareButton, Votes } from "./VoteBar";
 import { Covered, VideoPlayer, YouTube } from "./Media";
@@ -28,7 +29,10 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : inText ? [inText] : [];
   const yt = images.length === 0 ? firstYouTube(post.body) : null;
   const video = images.length === 0 && !yt ? firstVideo(post.body) : null;
-  const preview = plainText(yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : post.body, 300);
+  // No picture or player: the first link becomes a card (or plays, if its page holds a video), so its text can go.
+  const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
+  const previewText = yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : firstLink ? withoutBareLink(post.body, firstLink) : post.body;
+  const preview = plainText(previewText, 300);
   const hub = post.community;
   const owner = !!viewer && (viewer.admin || hub?.created_by === viewer.id);
   const isStaff = owner || (!!hub && !!viewer?.staffHubs.includes(hub.id));
@@ -91,6 +95,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </Link>
         </Covered>
       )}
+      {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} />}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
         <Link href={`${href}#comments`} className="act" aria-label={countLabel(post.comment_count, "comment")}>
