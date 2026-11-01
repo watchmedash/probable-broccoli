@@ -10,8 +10,11 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const id = Number((await params).id);
   const me = await currentUser();
   if (!me) redirect(`/login?next=/p/${id}/edit`);
-  const post = Number.isSafeInteger(id) ? await fetchPost(await serverSupabase(), id, true) : null;
+  const sb = await serverSupabase();
+  const post = Number.isSafeInteger(id) ? await fetchPost(sb, id, true) : null;
   if (!post) notFound();
   if (post.author?.id !== me.id) redirect(`/p/${id}`);
-  return <main><EditPost id={post.id} title={post.title} body={post.body} image={post.image_url} gallery={(post.image_urls?.length ?? 0) > 1} /></main>;
+  const hub = post.community ? (await sb.from("communities").select("allow_images").eq("id", post.community.id).maybeSingle()).data : null;
+  const pictures = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
+  return <main><EditPost id={post.id} title={post.title} body={post.body} pictures={pictures} imagesAllowed={hub?.allow_images ?? true} /></main>;
 }
