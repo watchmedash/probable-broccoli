@@ -8,8 +8,8 @@ export const PAGE_SIZE = 20;
 
 // Google AdSense. Feed ads stay off until the in-feed ad unit's slot and layout key are filled in.
 export const ADSENSE_CLIENT = "ca-pub-5412699736062085";
-export const ADSENSE_FEED_SLOT = "";
-export const ADSENSE_FEED_LAYOUT = "";
+export const ADSENSE_FEED_SLOT = "6274516221";
+export const ADSENSE_FEED_LAYOUT = "-6h+ca+1m-10+au";
 /** One ad after this many posts. */
 export const AD_EVERY = 8;
 
