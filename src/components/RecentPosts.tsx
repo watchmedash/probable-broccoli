@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { timeAgo } from "@/lib/format";
+import { browserSupabase } from "@/lib/supabase/client";
 import { HubIcon } from "./Avatars";
 
 const KEY = "nakodu:recent";
@@ -17,14 +18,22 @@ function read(): RecentPost[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { return []; }
 }
 
+function write(list: RecentPost[]) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(list));
+    window.dispatchEvent(new Event(KEY));
+  } catch {}
+}
+
+/** Takes a post off the list, once it's deleted or removed. */
+export function forgetRecent(id: number) {
+  write(read().filter(p => p.id !== id));
+}
+
 /** Remembers an opened post on this browser (newest first, at most 10). */
 export function RecordVisit({ post }: { post: RecentPost }) {
   useEffect(() => {
-    try {
-      const list = [post, ...read().filter(p => p.id !== post.id)].slice(0, MAX);
-      localStorage.setItem(KEY, JSON.stringify(list));
-      window.dispatchEvent(new Event(KEY));
-    } catch {}
+    write([post, ...read().filter(p => p.id !== post.id)].slice(0, MAX));
   }, [post]);
   return null;
 }
@@ -36,6 +45,16 @@ export function RecentPosts() {
     const load = () => setItems(read());
     load();
     window.addEventListener(KEY, load);
+    // The list lives in this browser, so posts deleted since, here or elsewhere, have to be looked up. A failed lookup leaves it alone.
+    const ids = read().map(p => p.id);
+    if (ids.length) {
+      Promise.resolve(browserSupabase().from("posts").select("id").in("id", ids)).then(({ data, error }) => {
+        if (error || !data) return;
+        const left = new Set(data.map((d: { id: number }) => d.id));
+        const gone = ids.filter(id => !left.has(id));
+        if (gone.length) write(read().filter(p => !gone.includes(p.id)));
+      }).catch(() => {});
+    }
     return () => window.removeEventListener(KEY, load);
   }, []);
   if (!items || items.length === 0) return null;

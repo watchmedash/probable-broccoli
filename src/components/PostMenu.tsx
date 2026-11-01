@@ -8,6 +8,7 @@ import { AskDialog, PickDialog } from "./Dialogs";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
 import { useToast } from "./Toast";
+import { forgetRecent } from "./RecentPosts";
 
 export type PostMenuProps = {
   postId: number;
@@ -98,6 +99,7 @@ export function PostMenu(p: PostMenuProps) {
           onClose={() => setDialog(null)}
           onConfirm={async reason => {
             const { error } = await sb().rpc("remove_post", { post: p.postId, reason: reason || null });
+            if (!error) forgetRecent(p.postId);
             if (error) return errorMessage(error);
             p.onGone?.();
             router.refresh();
@@ -113,6 +115,7 @@ export function PostMenu(p: PostMenuProps) {
           onClose={() => setDialog(null)}
           onConfirm={async () => {
             const { error } = await sb().from("posts").delete().eq("id", p.postId);
+            if (!error) forgetRecent(p.postId);
             if (error) return errorMessage(error);
             leave();
             router.refresh();
