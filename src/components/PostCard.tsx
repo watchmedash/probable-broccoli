@@ -23,15 +23,16 @@ import { Covered, VideoPlayer, YouTube } from "./Media";
  */
 export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; showHub: boolean; signedIn: boolean; viewer: Viewer | null }) {
   const [gone, setGone] = useState(false);
+  const [linkPlays, setLinkPlays] = useState(false);
   if (gone) return null;
   const href = `/p/${post.id}`;
   const inText = firstBodyImage(post.body);
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : inText ? [inText] : [];
   const yt = images.length === 0 ? firstYouTube(post.body) : null;
   const video = images.length === 0 && !yt ? firstVideo(post.body) : null;
-  // No picture or player: the first link becomes a card (or plays, if its page holds a video), so its text can go.
+  // No picture or player: the first link gets a card below. If its page holds a video that plays, the link's text goes.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
-  const previewText = yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : firstLink ? withoutBareLink(post.body, firstLink) : post.body;
+  const previewText = yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : firstLink && linkPlays ? withoutBareLink(post.body, firstLink) : post.body;
   const preview = plainText(previewText, 300);
   const hub = post.community;
   const owner = !!viewer && (viewer.admin || hub?.created_by === viewer.id);
@@ -95,7 +96,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </Link>
         </Covered>
       )}
-      {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} />}
+      {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} />}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
         <Link href={`${href}#comments`} className="act" aria-label={countLabel(post.comment_count, "comment")}>

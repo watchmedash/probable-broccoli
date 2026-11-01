@@ -107,8 +107,8 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   return { posts, next: posts.length === PAGE_SIZE ? offset + PAGE_SIZE : null };
 }
 
-/** Whether a link gets a preview card, from the same function as the cards themselves. Gives up quickly: the card can still show, with its link left in. */
-export async function linkHasCard(url: string): Promise<boolean> {
+/** The video a page says it holds, from the same function as the link cards. Gives up quickly: the card can still play it, with its link left in. */
+export async function linkVideo(url: string): Promise<string | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/link-preview`, {
       method: "POST",
@@ -116,11 +116,9 @@ export async function linkHasCard(url: string): Promise<boolean> {
       body: JSON.stringify({ url }),
       signal: AbortSignal.timeout(2500),
     });
-    if (!res.ok) return false;
-    const p = await res.json();
-    return !!(p.title || p.image || p.video);
+    return res.ok ? ((await res.json()).video ?? null) : null;
   } catch {
-    return false;
+    return null;
   }
 }
 

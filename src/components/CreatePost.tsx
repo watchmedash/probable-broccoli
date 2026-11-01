@@ -1,16 +1,23 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
+import { uploadImage } from "@/lib/upload";
 import type { Flair, Hub } from "@/lib/types";
 import { Icon, I } from "./Icon";
 import { MarkdownEditor } from "./MarkdownEditor";
+
+const MAX_GALLERY = 10;
+const MAX_BYTES = 10 * 1024 * 1024;
 
 export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: number | null }) {
   const [hubId, setHubId] = useState<number | null>(initialHub);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [pollOn, setPollOn] = useState(false);
   const [options, setOptions] = useState(["", ""]);
   const [flairs, setFlairs] = useState<Flair[]>([]);
@@ -31,6 +38,23 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
     browserSupabase().from("hub_flairs").select("id,label,color").eq("hub_id", hubId).order("label").then(({ data }) => setFlairs((data ?? []) as Flair[]));
   }, [hubId]);
 
+  // A gallery: pictures attached to the top of the post, swiped through sideways. Pictures in the text go through the editor.
+  async function addToGallery(files: FileList | null) {
+    if (!files?.length) return;
+    const list = [...files].slice(0, MAX_GALLERY - gallery.length);
+    if (list.some(f => f.size > MAX_BYTES)) return setError("Pictures can be up to 10 MB each.");
+    setUploading(true);
+    setError(null);
+    try {
+      const urls = await Promise.all(list.map(f => uploadImage(f, "post-images")));
+      setGallery(g => [...g, ...urls]);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function submit() {
     const poll = pollOn ? options.map(o => o.trim()).filter(Boolean) : [];
     const problem =
@@ -44,13 +68,13 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
       hub_id: hubId,
       post_title: title.trim(),
       post_body: body,
-      image: null,
+      image: gallery.length === 1 ? gallery[0] : null,
       poll_options: poll.length ? poll : null,
       flair,
       share_of: null,
       is_spoiler: spoiler,
       is_mature: mature,
-      images: null,
+      images: gallery.length > 1 ? gallery : null,
     });
     setBusy(false);
     if (error) return setError(errorMessage(error));
@@ -87,6 +111,16 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
         <input id="title" value={title} maxLength={300} onChange={e => { setTitle(e.target.value); setError(null); }} />
       </div>
       <MarkdownEditor id="body" label="Text (optional)" value={body} onChange={setBody} maxLength={50000} imagesAllowed={imagesAllowed} />
+      {gallery.length > 0 && (
+        <div className="thumbs">
+          {gallery.map(u => (
+            <div key={u}>
+              <img src={u} alt="" />
+              <button aria-label="Remove picture" onClick={() => setGallery(g => g.filter(x => x !== u))}><Icon icon={I.close} size={11} /></button>
+            </div>
+          ))}
+        </div>
+      )}
       {pollOn && (
         <div className="field">
           <label>Poll options</label>
@@ -100,12 +134,18 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
         </div>
       )}
       <div className="toolbar">
+        {imagesAllowed && (
+          <label className="btn quiet" style={{ cursor: gallery.length >= MAX_GALLERY ? "default" : "pointer" }}>
+            <Icon icon={I.imageOutline} size={14} /> {uploading ? "Uploading..." : gallery.length ? `Gallery ${gallery.length}/${MAX_GALLERY}` : "Gallery"}
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden disabled={uploading || gallery.length >= MAX_GALLERY} onChange={e => { addToGallery(e.target.files); e.target.value = ""; }} />
+          </label>
+        )}
         {pollsAllowed && <button className={`btn ${pollOn ? "" : "quiet"}`} onClick={() => setPollOn(p => !p)}>Poll</button>}
         <label className="check"><input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Spoiler</label>
         <label className="check"><input type="checkbox" checked={mature} onChange={e => setMature(e.target.checked)} /> 18+</label>
       </div>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-      <button className="btn block" disabled={busy} onClick={submit}>{busy ? "Posting..." : "Post"}</button>
+      <button className="btn block" disabled={busy || uploading} onClick={submit}>{busy ? "Posting..." : "Post"}</button>
     </div>
   );
 }

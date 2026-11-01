@@ -12,7 +12,7 @@ let blockList: Promise<string[]> | null = null;
 const loadBlockList = () => (blockList ??= Promise.resolve(browserSupabase().from("site_blocked_video_domains").select("domain")).then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)));
 
 /** The first link in a post as a card, from the same link-preview server function the app uses (through our own address). A page that says it holds a video plays above its card, unless its site is blocked. */
-export function LinkCard({ url, blockedVideos }: { url: string; blockedVideos?: string[] }) {
+export function LinkCard({ url, blockedVideos, onPlays }: { url: string; blockedVideos?: string[]; onPlays?: () => void }) {
   const [p, setP] = useState<Preview | null>(null);
   const [blocked, setBlocked] = useState(blockedVideos ?? []);
   const spot = useRef<HTMLDivElement>(null);
@@ -38,6 +38,8 @@ export function LinkCard({ url, blockedVideos }: { url: string; blockedVideos?: 
     io.observe(el);
     return () => { live = false; io.disconnect(); };
   }, [url]);
+  const plays = !!p?.video && !isBlockedVideo(url, blocked) && !isBlockedVideo(p.video, blocked);
+  useEffect(() => { if (plays) onPlays?.(); }, [plays, onPlays]);
   if (!p) return <div ref={spot} />;
   const playable = p.video && !isBlockedVideo(url, blocked) && !isBlockedVideo(p.video, blocked) ? p.video : null;
   const video: VideoLink | null = playable ? videoLink(playable, blocked) ?? { kind: "page", url: playable } : null;

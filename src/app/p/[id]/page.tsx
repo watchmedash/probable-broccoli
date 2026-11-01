@@ -16,7 +16,7 @@ import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
-import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin, linkHasCard } from "@/lib/queries";
+import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { firstBodyImage } from "@/lib/mdedit";
@@ -74,9 +74,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const where = post.community ? `n/${post.community.name}` : null;
   // The first non-YouTube link gets a preview card, like in the app.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
-  // Once a video plays or a card shows, the link doesn't need to show as well.
-  const hasCard = firstLink && !post.spoiler && !post.mature ? await linkHasCard(firstLink) : false;
-  const shownLink = video?.url && post.body.includes(video.url) ? video.url : yt ? [...post.body.matchAll(/https?:\/\/[^\s)\]]+/g)].map(m => m[0]).find(u => youTubeId(u)) ?? null : hasCard ? firstLink : null;
+  // Once a video plays in the post, its link doesn't need to show as well. Other links stay, with their card below.
+  const pageVideo = firstLink && !post.spoiler && !post.mature && !isBlockedVideo(firstLink, blockedVideos) ? await linkVideo(firstLink) : null;
+  const shownLink = video?.url && post.body.includes(video.url) ? video.url : yt ? [...post.body.matchAll(/https?:\/\/[^\s)\]]+/g)].map(m => m[0]).find(u => youTubeId(u)) ?? null : pageVideo && !isBlockedVideo(pageVideo, blockedVideos) ? firstLink : null;
   const shownBody = shownLink ? withoutBareLink(post.body, shownLink) : post.body;
   const closed = post.locked || post.community?.status === "archived" || (!!me && !access.canComment && !access.isStaff);
 
