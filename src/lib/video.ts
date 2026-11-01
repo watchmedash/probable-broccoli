@@ -27,6 +27,12 @@ export function videoLink(raw: string, blocked: string[] = []): VideoLink | null
   return /^\/(.+\/)?(embed|player|e)(\/|\.|$)/i.test(u.pathname) ? { kind: "page", url: u.toString() } : null;
 }
 
+/** Removes a link where it stands alone; one written as [words](url) stays. */
+export function withoutBareLink(body: string, url: string): string {
+  const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return body.replace(new RegExp(`(^|\\s)${escaped}(?=\\s|$)`), "$1").trim();
+}
+
 /** The first playable link in a post, if any. */
 export function firstVideo(text: string, blocked: string[] = []): VideoLink | null {
   for (const m of text.matchAll(/https?:\/\/[^\s)\]]+/g)) {

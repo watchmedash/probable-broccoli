@@ -23,14 +23,14 @@ export function LinkCard({ url, blockedVideos = [] }: { url: string; blockedVide
   return (
     <>
       {video && <VideoPlayer video={video} title={p.title ?? undefined} poster={p.image} playInline />}
-      <a href={url} target="_blank" rel="nofollow ugc noopener" className="panel" style={{ display: "flex", gap: 12, padding: 12, margin: "8px 0", alignItems: "center" }}>
+      {!video && <a href={url} target="_blank" rel="nofollow ugc noopener" className="panel" style={{ display: "flex", gap: 12, padding: 12, margin: "8px 0", alignItems: "center" }}>
         <span style={{ flex: 1, minWidth: 0 }}>
           <b style={{ display: "block" }}>{p.title ?? url}</b>
           {p.description && <span className="muted small" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</span>}
           <span className="muted small">{p.site ?? new URL(url).hostname}</span>
         </span>
         {p.image && !video && <img src={p.image} alt="" loading="lazy" style={{ width: 96, height: 72, objectFit: "cover", borderRadius: 1, flex: "none" }} />}
-      </a>
+      </a>}
     </>
   );
 }

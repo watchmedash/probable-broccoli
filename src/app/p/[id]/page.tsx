@@ -16,11 +16,11 @@ import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
-import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
+import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin, previewVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { firstBodyImage } from "@/lib/mdedit";
-import { firstVideo, isBlockedVideo, videoLink } from "@/lib/video";
+import { firstVideo, isBlockedVideo, videoLink, withoutBareLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
 
 // One read per request, shared by the metadata and the page.
@@ -74,6 +74,10 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const where = post.community ? `n/${post.community.name}` : null;
   // The first non-YouTube link gets a preview card, like in the app.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
+  // Once a video plays in the post, its link doesn't need to show as well.
+  const pageVideo = firstLink && !post.spoiler && !post.mature && !isBlockedVideo(firstLink, blockedVideos) ? await previewVideo(firstLink) : null;
+  const playsFrom = video?.url && post.body.includes(video.url) ? video.url : yt ? [...post.body.matchAll(/https?:\/\/[^\s)\]]+/g)].map(m => m[0]).find(u => youTubeId(u)) ?? null : pageVideo && !isBlockedVideo(pageVideo, blockedVideos) ? firstLink : null;
+  const shownBody = playsFrom ? withoutBareLink(post.body, playsFrom) : post.body;
   const closed = post.locked || post.community?.status === "archived" || (!!me && !access.canComment && !access.isStaff);
 
   const jsonLd = {
@@ -152,7 +156,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               {images.length > 1 && <div className="gallery">{images.map(u => <img key={u} src={u} alt="" loading="lazy" />)}</div>}
               {yt && <YouTube id={yt} title={post.title} playInline />}
               {video && <VideoPlayer video={video} title={post.title} playInline />}
-              {!onlyLink && post.body && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />}
+              {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody) }} />}
             </Lightbox>
           </Covered>
           {post.original && (

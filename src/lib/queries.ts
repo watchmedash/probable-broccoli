@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PAGE_SIZE } from "./config";
+import { PAGE_SIZE, SUPABASE_KEY, SUPABASE_URL } from "./config";
 import type { Comment, Hub, Notification, Post, Profile } from "./types";
 
 // The same columns the Android app reads (data/Repositories.kt).
@@ -105,6 +105,21 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   // Lists only show a preview, so a long story doesn't get sent to the browser in full.
   const posts = ((data ?? []) as unknown as Post[]).map(p => (p.body.length > FEED_BODY_CHARS ? { ...p, body: p.body.slice(0, FEED_BODY_CHARS) } : p));
   return { posts, next: posts.length === PAGE_SIZE ? offset + PAGE_SIZE : null };
+}
+
+/** The video a page says it holds, from the same preview function as the link cards. Gives up quickly: the card can still show it. */
+export async function previewVideo(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/link-preview`, {
+      method: "POST",
+      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(2500),
+    });
+    return res.ok ? ((await res.json()).video ?? null) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchPost(sb: SupabaseClient, id: number, signedIn: boolean): Promise<Post | null> {

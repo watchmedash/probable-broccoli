@@ -13,7 +13,7 @@ export function Covered({ spoiler, mature, children }: { spoiler: boolean; matur
       {children}
       <div className="reveal">
         <button aria-label={mature ? "Show 18+ post" : "Show spoiler"} onClick={e => { e.preventDefault(); e.stopPropagation(); setShown(true); }}>
-          <Icon icon={I.eye} size={18} />
+          <Icon icon={I.eye} size={24} />
         </button>
       </div>
     </div>
