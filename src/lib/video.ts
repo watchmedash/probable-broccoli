@@ -1,26 +1,36 @@
 export type VideoLink = { kind: "file"; url: string; hls: boolean } | { kind: "page"; url: string };
 
-const hostMatches = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`);
+/** True when the link's site, or a subdomain of it, is on the admins' block list. */
+export function isBlockedVideo(raw: string, blocked: string[] = []): boolean {
+  try {
+    const host = new URL(raw).hostname.toLowerCase().replace(/^www\./, "");
+    return blocked.some(d => host === d || host.endsWith(`.${d}`));
+  } catch {
+    return true;
+  }
+}
 
-/** What a link plays as: a video file on any https site, or a page on a site the admins allow. */
-export function videoLink(raw: string, embedDomains: string[] = []): VideoLink | null {
+/**
+ * What a link plays as, going by the address alone: a video file, or a player page such as
+ * example.com/embed/123. Other pages can only be told apart by their tags (see LinkCard).
+ */
+export function videoLink(raw: string, blocked: string[] = []): VideoLink | null {
   let u: URL;
   try {
     u = new URL(raw);
   } catch {
     return null;
   }
-  if (u.protocol !== "https:") return null;
+  if (u.protocol !== "https:" || isBlockedVideo(raw, blocked)) return null;
   const file = u.pathname.toLowerCase().match(/\.(mp4|webm|m3u8)$/)?.[1];
   if (file) return { kind: "file", url: u.toString(), hls: file === "m3u8" };
-  const host = u.hostname.toLowerCase().replace(/^www\./, "");
-  return embedDomains.some(d => hostMatches(host, d)) ? { kind: "page", url: u.toString() } : null;
+  return /^\/(.+\/)?(embed|player|e)(\/|\.|$)/i.test(u.pathname) ? { kind: "page", url: u.toString() } : null;
 }
 
 /** The first playable link in a post, if any. */
-export function firstVideo(text: string, embedDomains: string[] = []): VideoLink | null {
+export function firstVideo(text: string, blocked: string[] = []): VideoLink | null {
   for (const m of text.matchAll(/https?:\/\/[^\s)\]]+/g)) {
-    const v = videoLink(m[0], embedDomains);
+    const v = videoLink(m[0], blocked);
     if (v) return v;
   }
   return null;

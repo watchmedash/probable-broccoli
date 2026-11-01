@@ -20,7 +20,7 @@ import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin }
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { firstBodyImage } from "@/lib/mdedit";
-import { firstVideo, videoLink } from "@/lib/video";
+import { firstVideo, isBlockedVideo, videoLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
 
 // One read per request, shared by the metadata and the page.
@@ -49,7 +49,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const { me, sb, post } = await load(Number((await params).id));
   if (!post) notFound();
   const hub = post.community;
-  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, embedDomains] = await Promise.all([
+  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, blockedVideos] = await Promise.all([
     fetchComments(sb, post.id, !!me),
     hub ? Promise.resolve(null) : sb.from("site_link_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     isSiteAdmin(sb, me?.id),
@@ -58,7 +58,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     hub && me ? sb.from("hub_bans").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     blockedIds(sb, me?.id),
     hub?.allow_user_flair ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
-    sb.from("site_embed_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
+    sb.from("site_blocked_video_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
   ]);
   const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
   const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
@@ -66,11 +66,11 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // Comment links are clickable only for the sites the hub's mods (or, on profiles, the admins) allow.
   const allowed = post.community ? post.community.link_domains ?? [] : siteDomains ?? [];
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
-  const yt = images.length === 0 ? firstYouTube(post.body) : null;
+  const yt = images.length === 0 && !isBlockedVideo("https://www.youtube.com/", blockedVideos) && !isBlockedVideo("https://youtu.be/", blockedVideos) ? firstYouTube(post.body) : null;
   // A post that is only a YouTube link shows the player instead of the bare link.
-  const video = images.length === 0 && !yt ? firstVideo(post.body, embedDomains) : null;
+  const video = images.length === 0 && !yt ? firstVideo(post.body, blockedVideos) : null;
   const single = post.body.trim().split(/\s+/).length === 1 ? post.body.trim() : "";
-  const onlyLink = (yt && youTubeId(single)) || (video && videoLink(single, embedDomains));
+  const onlyLink = (yt && youTubeId(single)) || (video && videoLink(single, blockedVideos));
   const where = post.community ? `n/${post.community.name}` : null;
   // The first non-YouTube link gets a preview card, like in the app.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
@@ -167,7 +167,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               {post.original.body && <span className="card-body">{plainText(post.original.body, 240)}</span>}
             </Link>
           )}
-          {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} />}
+          {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} blockedVideos={blockedVideos} />}
           {post.poll && post.poll.length > 0 && (
             <Poll postId={post.id} options={post.poll} mine={post.my_poll?.[0]?.option_id ?? null} signedIn={!!me} />
           )}

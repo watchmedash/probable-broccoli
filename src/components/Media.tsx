@@ -56,10 +56,10 @@ function FilePlayer({ url, hls }: { url: string; hls: boolean }) {
 }
 
 /**
- * A linked video, loaded only when tapped. Files use the browser's player. Pages from sites the admins allow
+ * A linked video, loaded only when tapped. Files use the browser's player. Other pages
  * run sandboxed: without allow-popups or allow-top-navigation they can't open ads or send you elsewhere.
  */
-export function VideoPlayer({ video, title, playInline }: { video: VideoLink; title?: string; playInline: boolean }) {
+export function VideoPlayer({ video, title, poster, playInline }: { video: VideoLink; title?: string; poster?: string | null; playInline: boolean }) {
   const [playing, setPlaying] = useState(false);
   if (playing && video.kind === "file") return <FilePlayer url={video.url} hls={video.hls} />;
   if (playing) {
@@ -80,6 +80,7 @@ export function VideoPlayer({ video, title, playInline }: { video: VideoLink; ti
         setPlaying(true);
       }}
     >
+      {poster && <img src={poster} alt="" loading="lazy" />}
       <PlayMark />
     </div>
   );

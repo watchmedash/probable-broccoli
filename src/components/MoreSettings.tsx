@@ -114,7 +114,7 @@ export function AdminSettings() {
   const [embeds, setEmbeds] = useState<string[] | null>(null);
   const [embed, setEmbed] = useState("");
   const load = useCallback(async () => {
-    const [w, d, e] = await Promise.all([sb.from("blocked_words").select("word,level").order("word"), sb.from("site_link_domains").select("domain").order("domain"), sb.from("site_embed_domains").select("domain").order("domain")]);
+    const [w, d, e] = await Promise.all([sb.from("blocked_words").select("word,level").order("word"), sb.from("site_link_domains").select("domain").order("domain"), sb.from("site_blocked_video_domains").select("domain").order("domain")]);
     setEmbeds((e.data ?? []).map((r: { domain: string }) => r.domain));
     setWords(w.data ?? []);
     setDomains((d.data ?? []).map((r: { domain: string }) => r.domain));
@@ -157,15 +157,15 @@ export function AdminSettings() {
           </div>
         ))}
       </Section>
-      <Section title="Video sites that play inside posts">
+      <Section title="Video sites that can't play inside posts">
         <div style={{ display: "flex", gap: 8 }}>
           <input aria-label="Video site" placeholder="example.com" value={embed} onChange={e => setEmbed(e.target.value)} style={input} />
-          <button className="btn" disabled={!embed.trim()} onClick={() => { act(sb.from("site_embed_domains").insert({ domain: embed.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "") })); setEmbed(""); }}>Add</button>
+          <button className="btn" disabled={!embed.trim()} onClick={() => { act(sb.from("site_blocked_video_domains").insert({ domain: embed.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "") })); setEmbed(""); }}>Add</button>
         </div>
         {embeds?.map(d => (
           <div key={d} style={{ display: "flex", alignItems: "center" }}>
             <span style={{ flex: 1 }}>{d}</span>
-            <button className="linkish small" onClick={() => act(sb.from("site_embed_domains").delete().eq("domain", d))}>Remove</button>
+            <button className="linkish small" onClick={() => act(sb.from("site_blocked_video_domains").delete().eq("domain", d))}>Remove</button>
           </div>
         ))}
       </Section>

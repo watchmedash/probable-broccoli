@@ -10,9 +10,20 @@ export function Lightbox({ children }: { children: React.ReactNode }) {
   const [at, setAt] = useState<number | null>(null);
   const move = (d: number) => setAt(i => (i == null ? i : (i + d + urls.length) % urls.length));
 
+  // The page behind stays still and its scroll bar goes, without the page jumping sideways.
+  const isOpen = at != null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const root = document.documentElement, body = document.body;
+    const bar = window.innerWidth - root.clientWidth;
+    root.style.overflow = "hidden";
+    body.style.paddingRight = `${bar}px`;
+    return () => { root.style.overflow = ""; body.style.paddingRight = ""; };
+  }, [isOpen]);
+
   useEffect(() => {
     if (at == null) return;
-    const key = (e: KeyboardEvent) => {
+    const key =(e: KeyboardEvent) => {
       if (e.key === "Escape") setAt(null);
       if (e.key === "ArrowRight") setAt(i => (i == null ? i : (i + 1) % urls.length));
       if (e.key === "ArrowLeft") setAt(i => (i == null ? i : (i - 1 + urls.length) % urls.length));
