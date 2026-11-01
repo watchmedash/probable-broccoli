@@ -87,7 +87,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
         {locked && page.posts.length === 0 ? (
           <div className="empty">{hub.privacy === "private" ? "This hub is private. Ask to join to see its posts." : "Only members see posts here. Join to read them."}</div>
         ) : (
-          <FeedList initial={page.posts} next={page.next} query={{ sort, range, hubId: hub.id, blocked }} showHub={false} signedIn={!!me} viewer={viewer} empty="No posts here yet." />
+          <FeedList initial={page.posts} next={page.next} query={{ sort, range, hubId: hub.id, blocked }} showHub={false} signedIn={!!me} viewer={viewer} empty="No posts here yet." ads={!hub.is_mature} />
         )}
       </div>
       <aside className="side">

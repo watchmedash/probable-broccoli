@@ -58,6 +58,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           showHub
           signedIn={!!me}
           viewer={viewer}
+          ads
           empty={feed === "following" ? <>Join some hubs or follow people and their posts show up here. <Link href="/hubs" className="linkish">Find hubs</Link></> : users ? "Posts people make on their profiles show up here." : "Nothing here yet."}
         />
       </div>

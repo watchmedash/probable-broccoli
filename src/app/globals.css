@@ -360,3 +360,10 @@ select, .field select { appearance: none; -webkit-appearance: none; padding-righ
 .chat-reactions button.on { color: var(--blue); font-weight: 700; }
 .reaction-row { display: flex; padding: 2px 8px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .menu .reaction-row button { width: auto; padding: 4px 5px; font-size: 18px; gap: 0; }
+
+/* An ad between posts: nothing shows until Google has filled it. */
+.ad-label { display: none; }
+.ad-card:has(ins[data-ad-status="filled"]) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 16px; }
+.ad-card:has(ins[data-ad-status="filled"]) .ad-label { display: block; margin-bottom: 6px; }
+.ad-card:has(ins[data-ad-status="unfilled"]) { display: none; }
+@media (max-width: 1000px) { .ad-card:has(ins[data-ad-status="filled"]) { border-left: 0; border-right: 0; border-radius: 0; } }

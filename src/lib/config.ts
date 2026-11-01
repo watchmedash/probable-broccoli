@@ -6,5 +6,12 @@ export const SITE_URL = "https://nakodu.top";
 export const PLAY_URL = "https://play.google.com/store/apps/details?id=com.nakodu.app";
 export const PAGE_SIZE = 20;
 
+// Google AdSense. Feed ads stay off until the in-feed ad unit's slot and layout key are filled in.
+export const ADSENSE_CLIENT = "ca-pub-5412699736062085";
+export const ADSENSE_FEED_SLOT = "";
+export const ADSENSE_FEED_LAYOUT = "";
+/** One ad after this many posts. */
+export const AD_EVERY = 8;
+
 /** Accounts are a username and a password; Supabase gets a placeholder address that never receives mail. */
 export const hiddenEmail = (username: string) => `${username.trim().toLowerCase()}@users.nakodu.invalid`;
