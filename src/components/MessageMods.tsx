@@ -12,7 +12,7 @@ export function MessageMods({ hubId, hubName }: { hubId: number; hubName: string
   const router = useRouter();
   return (
     <div className="form-page">
-      <h1>Message the mods</h1>
+      <h1>Message mods</h1>
       <p className="muted" style={{ margin: 0 }}>Goes to the mod team of n/{hubName}.</p>
       <div className="field"><label htmlFor="subject">Subject</label><input id="subject" value={subject} maxLength={120} onChange={e => setSubject(e.target.value)} /></div>
       <div className="field"><label htmlFor="body">Message</label><textarea id="body" value={body} maxLength={4000} onChange={e => setBody(e.target.value)} /></div>

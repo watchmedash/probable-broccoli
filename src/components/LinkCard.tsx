@@ -1,20 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
-import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/config";
-
 type Preview = { url: string; title?: string | null; description?: string | null; image?: string | null; site?: string | null };
 
-/** The first link in a post as a card, from the same link-preview server function the app uses. */
+/** The first link in a post as a card, from the same link-preview server function the app uses (through our own address). */
 export function LinkCard({ url }: { url: string }) {
   const [p, setP] = useState<Preview | null>(null);
   useEffect(() => {
     let live = true;
-    fetch(`${SUPABASE_URL}/functions/v1/link-preview`, {
-      method: "POST",
-      headers: { "content-type": "application/json", apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ url }),
-    })
+    fetch("/api/link-preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) })
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (live && d && (d.title || d.image)) setP(d); })
       .catch(() => {});

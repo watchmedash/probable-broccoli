@@ -2,7 +2,7 @@ import Link from "next/link";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { Icon, I } from "./Icon";
 import { unreadMessages } from "@/lib/messages";
-import { UserMenu, SearchBox } from "./HeaderParts";
+import { UserMenu, SearchBox, SearchIconLink } from "./HeaderParts";
 import { MenuButton } from "./NavParts";
 
 export async function Header() {
@@ -30,7 +30,7 @@ export async function Header() {
         </div>
         <SearchBox />
         <nav className="top-actions">
-          <Link href="/search" className="icon-btn show-sm" aria-label="Search"><Icon icon={I.search} size={18} /></Link>
+          <SearchIconLink />
           {me ? (
             <>
               <Link href="/submit" className="icon-btn" aria-label="Create a post"><Icon icon={I.plus} size={18} /></Link>

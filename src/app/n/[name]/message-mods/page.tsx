@@ -4,7 +4,7 @@ import { MessageMods } from "@/components/MessageMods";
 import { fetchHubByName } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Message the mods", robots: { index: false } };
+export const metadata: Metadata = { title: "Message mods", robots: { index: false } };
 
 export default async function MessageModsPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;

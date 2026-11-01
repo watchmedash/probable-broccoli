@@ -13,9 +13,9 @@ const POST_BASE =
   // The post a crosspost shares (null when guests can't see it, or it was removed).
   `original(id,title,body,image_url,image_urls,created_at,community:communities(id,name,color,icon_url),author:profiles!author_id(id,username,avatar_url))`;
 /** Every post column for a signed-in reader (for embeds like saved posts). */
-export const POST_SELECT = `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id)`;
+export const POST_SELECT = `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id),my_follow:post_follows(post_id)`;
 const postColumns = (signedIn: boolean) =>
-  signedIn ? `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id)` : POST_BASE;
+  signedIn ? POST_SELECT : POST_BASE;
 const commentColumns = (signedIn: boolean) =>
   `id,post_id,parent_id,body,score,depth,deleted,created_at,edited_at,${AUTHOR}` + (signedIn ? ",my_vote:comment_votes(value)" : "");
 
@@ -44,7 +44,28 @@ export type FeedQuery = {
   blocked?: string[];
   /** True: only posts on people's profiles. False: only posts in hubs. */
   profiles?: boolean;
+  /** Hubs you muted: they stay out of your home feed. */
+  muted?: number[];
+  /** Hubs you left on Popular show only what people liked or what's new; these hubs show everything. */
+  popular?: { allHubs: number[]; since: string };
 };
+
+/** Who's looking at a feed, for the card's Join button and ⋮ menu. */
+export type Viewer = { id: string; admin: boolean; hubs: number[]; staffHubs: number[]; removeHubs: number[] };
+export async function fetchViewer(sb: SupabaseClient, uid: string | undefined | null): Promise<Viewer | null> {
+  if (!uid) return null;
+  const [admin, hubs, mods] = await Promise.all([
+    isSiteAdmin(sb, uid),
+    myHubIds(sb, uid),
+    sb.from("hub_mods").select("hub_id,can_posts").eq("user_id", uid).then(r => (r.data ?? []) as { hub_id: number; can_posts: boolean }[]),
+  ]);
+  return { id: uid, admin, hubs, staffHubs: mods.map(m => m.hub_id), removeHubs: mods.filter(m => m.can_posts).map(m => m.hub_id) };
+}
+
+export async function fetchHubPrefs(sb: SupabaseClient, uid: string): Promise<{ hub_id: number; level: "all" | "mute" }[]> {
+  const { data } = await sb.from("hub_prefs").select("hub_id,level").eq("user_id", uid);
+  return (data ?? []) as { hub_id: number; level: "all" | "mute" }[];
+}
 
 export const parseSort = (s?: string): Sort => (s === "new" || s === "top" ? s : "hot");
 export const parseRange = (r?: string, fallback: Range = "all"): Range => (r && r in RANGES ? (r as Range) : fallback);
@@ -63,6 +84,11 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   if (q.profiles === true) query = query.is("community_id", null);
   if (q.profiles === false) query = query.not("community_id", "is", null);
   if (q.blocked?.length) query = query.not("author_id", "in", `(${q.blocked.join(",")})`);
+  if (q.muted?.length) query = query.not("community_id", "in", `(${q.muted.join(",")})`);
+  if (q.popular) {
+    const all = q.popular.allHubs.length ? `community_id.in.(${q.popular.allHubs.join(",")}),` : "";
+    query = query.or(`${all}score.gte.1,created_at.gte.${q.popular.since}`);
+  }
   if (q.peopleIds) {
     const parts = [];
     if (q.hubIds?.length) parts.push(`community_id.in.(${q.hubIds.join(",")})`);
@@ -141,6 +167,7 @@ export function describeNotification(n: Notification): string {
     case "removed": return n.detail ?? "A mod removed something you posted.";
     case "follow": return `${who} started following you`;
     case "modmail": return `Mod mail in ${n.detail ?? "a hub"}`;
+    case "followed_post": return `${who} commented on a post you follow: ${what}`;
     default: return `${who} replied to your post: ${what}`;
   }
 }

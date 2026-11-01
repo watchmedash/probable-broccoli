@@ -18,15 +18,15 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
   const c = data as unknown as ConversationRow;
   const v = chatView(c, me.id);
-  const { data: msgs } = await sb.from("messages").select("id,sender_id,body,created_at").eq("conversation_id", id).order("created_at").limit(500);
+  const { data: msgs } = await sb.from("messages").select("id,sender_id,body,created_at,reply_to,reactions:message_reactions(emoji,user_id)").eq("conversation_id", id).order("created_at").limit(500);
   return (
     <main className="page single">
-      <div className="panel" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 120px)" }}>
+      <div className="panel chat-panel">
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
           <Link href="/messages" className="icon-btn" aria-label="Back to messages"><Icon icon={I.back} size={16} /></Link>
           {v.other && <Link href={`/u/${v.other.username}`} style={{ display: "flex", alignItems: "center", gap: 10 }}><Avatar user={v.other} size={32} /><b>u/{v.other.username}</b></Link>}
         </div>
-        <ChatView id={id} me={me.id} initial={msgs ?? []} status={c.status} incomingRequest={v.incomingRequest} />
+        <ChatView id={id} me={me.id} other={v.other?.id ?? null} initial={msgs ?? []} status={c.status} incomingRequest={v.incomingRequest} startedByMe={v.startedByMe} otherRead={v.startedByMe ? c.recipient_read_at : c.requester_read_at} />
       </div>
     </main>
   );

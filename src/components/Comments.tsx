@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useAutoGrow } from "@/lib/autogrow";
 import { useRouter } from "next/navigation";
 import { browserSupabase } from "@/lib/supabase/client";
 import { buildTree, type CommentNode, type CommentSort } from "@/lib/comments";
@@ -67,6 +68,7 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(!!onDone);
+  const box = useAutoGrow(text, 420);
   const router = useRouter();
   if (!ctx.signedIn) {
     return (
@@ -103,6 +105,7 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
   return (
     <div className="composer">
       <textarea
+        ref={box}
         value={text}
         placeholder={placeholder}
         rows={focused ? 4 : 1}

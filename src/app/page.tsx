@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FeedList } from "@/components/FeedList";
 import { RecentPosts } from "@/components/RecentPosts";
 import { SortTabs } from "@/components/SortTabs";
-import { fetchPosts, followingIds, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
+import { fetchHubPrefs, fetchPosts, fetchViewer, followingIds, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 type Feed = "popular" | "all" | "following";
@@ -24,8 +24,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     const [hubIds, peopleIds] = await Promise.all([myHubIds(sb, me.id), followingIds(sb, me.id)]);
     query = { ...query, hubIds, peopleIds };
   }
-  query = { ...query, blocked: await blockedIds(sb, me?.id) };
-  const page = await fetchPosts(sb, query, !!me);
+  const [blocked, viewer, prefs] = await Promise.all([blockedIds(sb, me?.id), fetchViewer(sb, me?.id), me ? fetchHubPrefs(sb, me.id) : Promise.resolve([])]);
+  query = { ...query, blocked };
+  // Your bell choices shape the home feed: muted hubs stay out, and hubs left on Popular show what people liked or what's new.
+  if (me && feed !== "following" && !users) {
+    query.muted = prefs.filter(p => p.level === "mute").map(p => p.hub_id);
+    if (feed === "all") {
+      const since = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+      query.popular = { allHubs: prefs.filter(p => p.level === "all").map(p => p.hub_id), since };
+    }
+  }
+  let page = await fetchPosts(sb, query, !!me);
+  // A quiet week shouldn't mean an empty home page.
+  if (query.popular && page.posts.length === 0) {
+    query = { ...query, popular: undefined };
+    page = await fetchPosts(sb, query, !!me);
+  }
   const tabs: [Feed, string][] = [["popular", "Popular"], ["all", "All"], ...(me ? [["following", "Following"] as [Feed, string]] : [])];
 
   return (
@@ -43,6 +57,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           query={query}
           showHub
           signedIn={!!me}
+          viewer={viewer}
           empty={feed === "following" ? <>Join some hubs or follow people and their posts show up here. <Link href="/hubs" className="linkish">Find hubs</Link></> : users ? "Posts people make on their profiles show up here." : "Nothing here yet."}
         />
       </div>

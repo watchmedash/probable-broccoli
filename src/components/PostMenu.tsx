@@ -15,6 +15,7 @@ export type PostMenuProps = {
   authorId: string | null;
   myId: string | null;
   saved: boolean;
+  followed: boolean;
   pinned: boolean;
   locked: boolean;
   spoiler: boolean;
@@ -25,6 +26,8 @@ export type PostMenuProps = {
   /** Hub staff who may take other people's posts down. */
   canRemove: boolean;
   canCrosspost: boolean;
+  /** In a feed: the card disappears instead of the page moving away. */
+  onGone?: () => void;
 };
 
 /** The post's ⋮ menu, with what the app offers: your own post, saving and hiding, and mod tools. */
@@ -33,11 +36,13 @@ export function PostMenu(p: PostMenuProps) {
   const [dialog, setDialog] = useState<"report" | "remove" | "delete" | "prefix" | "block" | null>(null);
   const [flairs, setFlairs] = useState<Flair[]>([]);
   const [saved, setSaved] = useState(p.saved);
+  const [followed, setFollowed] = useState(p.followed);
   const router = useRouter();
   const toast = useToast();
   const mine = !!p.myId && p.myId === p.authorId;
   const sb = () => browserSupabase();
   const login = () => router.push(`/login?next=/p/${p.postId}`);
+  const leave = () => { if (p.onGone) p.onGone(); else router.push("/"); };
 
   async function run(fn: () => PromiseLike<{ error: unknown }>, done?: () => void) {
     setOpen(false);
@@ -60,7 +65,10 @@ export function PostMenu(p: PostMenuProps) {
           {p.myId
             ? item("save", saved ? "Unsave" : "Save", () => run(() => saved ? sb().from("saved_posts").delete().eq("post_id", p.postId) : sb().from("saved_posts").insert({ post_id: p.postId }), () => setSaved(!saved)))
             : item("save", "Save", login)}
-          {p.myId && !mine && item("eyeOff", "Hide", () => run(() => sb().from("hidden_posts").insert({ post_id: p.postId }), () => router.push("/")))}
+          {p.myId && !mine && item("eyeOff", "Hide", () => run(() => sb().from("hidden_posts").insert({ post_id: p.postId }), leave))}
+          {p.myId
+            ? item("bell", followed ? "Unfollow post" : "Follow post", () => run(() => followed ? sb().from("post_follows").delete().eq("post_id", p.postId).eq("user_id", p.myId) : sb().from("post_follows").insert({ post_id: p.postId }), () => setFollowed(!followed)))
+            : item("bell", "Follow post", login)}
           {p.canCrosspost && item("share", "Crosspost", () => (p.myId ? router.push(`/submit?share=${p.postId}`) : login()))}
           {p.isStaff && item("pin", p.pinned ? "Unpin" : "Pin to the hub", () => run(() => sb().from("posts").update({ pinned_at: p.pinned ? null : new Date().toISOString() }).eq("id", p.postId)))}
           {p.isStaff && item("lock", p.locked ? "Unlock comments" : "Lock comments", () => run(() => sb().from("posts").update({ locked: !p.locked }).eq("id", p.postId)))}
@@ -91,6 +99,7 @@ export function PostMenu(p: PostMenuProps) {
           onConfirm={async reason => {
             const { error } = await sb().rpc("remove_post", { post: p.postId, reason: reason || null });
             if (error) return errorMessage(error);
+            p.onGone?.();
             router.refresh();
           }}
         />
@@ -105,7 +114,7 @@ export function PostMenu(p: PostMenuProps) {
           onConfirm={async () => {
             const { error } = await sb().from("posts").delete().eq("id", p.postId);
             if (error) return errorMessage(error);
-            router.push("/");
+            leave();
             router.refresh();
           }}
         />
@@ -120,7 +129,7 @@ export function PostMenu(p: PostMenuProps) {
           onConfirm={async () => {
             const { error } = await sb().from("blocks").insert({ blocked_id: p.authorId });
             if (error) return errorMessage(error);
-            router.push("/");
+            leave();
             router.refresh();
           }}
         />

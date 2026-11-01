@@ -27,5 +27,5 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
   // The hubs you're in, plus the one you came from.
   const choices = hubs.filter(h => mine.includes(h.id) || h.name.toLowerCase() === sp.hub?.toLowerCase());
   const initial = choices.find(h => h.name.toLowerCase() === sp.hub?.toLowerCase())?.id ?? null;
-  return <main><CreatePost hubs={choices} initialHub={initial} uid={me.id} /></main>;
+  return <main><CreatePost hubs={choices} initialHub={initial} /></main>;
 }

@@ -6,7 +6,7 @@ import { FeedList } from "@/components/FeedList";
 import { ProfileActions, SelfActions } from "@/components/ProfileActions";
 import { SortTabs } from "@/components/SortTabs";
 import { monthYear } from "@/lib/format";
-import { blockedIds, fetchPosts, fetchProfile, isSiteAdmin, parseRange, parseSort } from "@/lib/queries";
+import { blockedIds, fetchPosts, fetchProfile, fetchViewer, isSiteAdmin, parseRange, parseSort } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 const load = cache(async (username: string) => {
@@ -67,7 +67,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           </div>
         </header>
         <SortTabs base={`/u/${profile.username}`} sort={sort} range={range} defaultSort="new" />
-        <FeedList initial={page.posts} next={page.next} query={{ sort, range, authorId: profile.id }} showHub signedIn={!!me} empty="No posts yet." />
+        <FeedList initial={page.posts} next={page.next} query={{ sort, range, authorId: profile.id }} showHub signedIn={!!me} viewer={await fetchViewer(sb, me?.id)} empty="No posts yet." />
       </div>
       <aside className="side" />
     </main>

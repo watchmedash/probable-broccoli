@@ -8,7 +8,7 @@ import { useToast } from "./Toast";
 type Target = { post_id: number } | { comment_id: number } | { user_id: string };
 
 /** Report a post, comment or person, with the same reasons as the app. */
-export function ReportDialog({ target, onClose }: { target: Target; onClose: () => void }) {
+export function ReportDialog({ target, quote, onClose }: { target: Target; quote?: string; onClose: () => void }) {
   const [reason, setReason] = useState<string | null>(null);
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,7 +38,7 @@ export function ReportDialog({ target, onClose }: { target: Target; onClose: () 
             disabled={!reason || busy}
             onClick={async () => {
               setBusy(true);
-              const { error } = await browserSupabase().from("reports").insert({ ...target, reason, details: details.trim() });
+              const { error } = await browserSupabase().from("reports").insert({ ...target, reason, details: [quote, details.trim()].filter(Boolean).join("\n").slice(0, 500) });
               setBusy(false);
               if (error) return setError(errorMessage(error));
               toast("Thanks. The mods will take a look.");

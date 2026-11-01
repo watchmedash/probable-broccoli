@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PostCard } from "@/components/PostCard";
 import { Unhide } from "@/components/Unhide";
-import { POST_SELECT } from "@/lib/queries";
+import { fetchViewer, POST_SELECT } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import type { Post } from "@/lib/types";
 
@@ -19,6 +19,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
   const at = hidden ? "hidden_at" : "saved_at";
   const { data } = await sb.from(table).select(`${at},post:posts(${POST_SELECT})`).order(at, { ascending: false }).limit(100);
   const posts = ((data ?? []) as unknown as { post: Post | null }[]).map(r => r.post).filter((p): p is Post => !!p);
+  const viewer = await fetchViewer(sb, me.id);
   return (
     <main className="page single">
       <div>
@@ -32,7 +33,7 @@ export default async function SavedPage({ searchParams }: { searchParams: Promis
           <div className="feed">
             {posts.map(p => (
               <div key={p.id}>
-                <PostCard post={p} showHub signedIn />
+                <PostCard post={p} showHub signedIn viewer={viewer} />
                 {hidden && <UnhideRow id={p.id} />}
               </div>
             ))}

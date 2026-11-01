@@ -12,6 +12,9 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return `${Math.floor(d / 365)}y`;
 }
 
+/** Member counts stay hidden until a hub has a few people; "1 member" helps nobody. */
+export const SHOW_MEMBERS_FROM = 10;
+
 export function countLabel(n: number, word: string): string {
   return `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
 }

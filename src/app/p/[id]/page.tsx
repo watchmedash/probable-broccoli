@@ -6,7 +6,8 @@ import { cache } from "react";
 import { Avatar, HubIcon } from "@/components/Avatars";
 import { Comments } from "@/components/Comments";
 import { Icon, I } from "@/components/Icon";
-import { Covered, YouTube } from "@/components/Media";
+import { Lightbox } from "@/components/Lightbox";
+import { Covered, VideoPlayer, YouTube } from "@/components/Media";
 import { Poll } from "@/components/Poll";
 import { LinkCard } from "@/components/LinkCard";
 import { RecentPosts, RecordVisit } from "@/components/RecentPosts";
@@ -18,6 +19,8 @@ import { renderMarkdown } from "@/lib/markdown";
 import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
+import { firstBodyImage } from "@/lib/mdedit";
+import { firstVideo, videoLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
 
 // One read per request, shared by the metadata and the page.
@@ -34,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const image = post.image_urls?.[0] ?? post.image_url;
   const description = plainText(post.body, 180) || `A post in ${where} on Nakodu.`;
   return {
-    title: `${post.title} : ${where}`,
+    title: { absolute: post.title },
     description,
     alternates: { canonical: `/p/${post.id}` },
     robots: post.mature ? { index: false } : undefined,
@@ -46,7 +49,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const { me, sb, post } = await load(Number((await params).id));
   if (!post) notFound();
   const hub = post.community;
-  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows] = await Promise.all([
+  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, embedDomains] = await Promise.all([
     fetchComments(sb, post.id, !!me),
     hub ? Promise.resolve(null) : sb.from("site_link_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     isSiteAdmin(sb, me?.id),
@@ -55,6 +58,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     hub && me ? sb.from("hub_bans").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     blockedIds(sb, me?.id),
     hub?.allow_user_flair ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
+    sb.from("site_embed_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
   ]);
   const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
   const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
@@ -64,10 +68,12 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : [];
   const yt = images.length === 0 ? firstYouTube(post.body) : null;
   // A post that is only a YouTube link shows the player instead of the bare link.
-  const onlyLink = yt && post.body.trim().split(/\s+/).length === 1 && youTubeId(post.body.trim());
+  const video = images.length === 0 && !yt ? firstVideo(post.body, embedDomains) : null;
+  const single = post.body.trim().split(/\s+/).length === 1 ? post.body.trim() : "";
+  const onlyLink = (yt && youTubeId(single)) || (video && videoLink(single, embedDomains));
   const where = post.community ? `n/${post.community.name}` : null;
   // The first non-YouTube link gets a preview card, like in the app.
-  const firstLink = images.length === 0 && !yt ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
+  const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
   const closed = post.locked || post.community?.status === "archived" || (!!me && !access.canComment && !access.isStaff);
 
   const jsonLd = {
@@ -121,6 +127,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
                 authorId={post.author?.id ?? null}
                 myId={me?.id ?? null}
                 saved={!!post.my_save?.length}
+                followed={!!post.my_follow?.length}
                 pinned={!!post.pinned_at}
                 locked={post.locked}
                 spoiler={post.spoiler}
@@ -140,10 +147,13 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
             {post.locked && <span className="tag spoiler"><Icon icon={I.lock} size={10} /> Locked</span>}
           </div>
           <Covered spoiler={post.spoiler} mature={post.mature}>
-            {images.length === 1 && <div className="media"><img src={images[0]} alt="" /></div>}
-            {images.length > 1 && <div className="gallery">{images.map(u => <img key={u} src={u} alt="" loading="lazy" />)}</div>}
-            {yt && <YouTube id={yt} title={post.title} playInline />}
-            {!onlyLink && post.body && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />}
+            <Lightbox>
+              {images.length === 1 && <div className="media"><img src={images[0]} alt="" /></div>}
+              {images.length > 1 && <div className="gallery">{images.map(u => <img key={u} src={u} alt="" loading="lazy" />)}</div>}
+              {yt && <YouTube id={yt} title={post.title} playInline />}
+              {video && <VideoPlayer video={video} title={post.title} playInline />}
+              {!onlyLink && post.body && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />}
+            </Lightbox>
           </Covered>
           {post.original && (
             // A crosspost shows the post it shares.
@@ -186,14 +196,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               <HubIcon hub={post.community} size={40} />
               <b>n/{post.community.name}</b>
             </Link>
-            <Link href={`/n/${post.community.name}`} className="btn quiet block">See the hub</Link>
+            <Link href={`/n/${post.community.name}`} className="btn quiet block">Visit hub</Link>
           </section>
         )}
         <RecentPosts />
       </aside>
       <RecordVisit post={{
         id: post.id, title: post.title, created_at: post.created_at, score: post.score, comments: post.comment_count,
-        image: post.spoiler || post.mature ? null : images[0] ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null),
+        image: post.spoiler || post.mature ? null : images[0] ?? firstBodyImage(post.body) ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null),
         hub: post.community ? { name: post.community.name, color: post.community.color, icon_url: post.community.icon_url } : null,
         author: post.author?.username ?? null,
       }} />

@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
@@ -8,15 +7,10 @@ import type { Flair, Hub } from "@/lib/types";
 import { Icon, I } from "./Icon";
 import { MarkdownEditor } from "./MarkdownEditor";
 
-const MAX_IMAGES = 10;
-const MAX_BYTES = 10 * 1024 * 1024;
-
-export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub: number | null; uid: string }) {
+export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: number | null }) {
   const [hubId, setHubId] = useState<number | null>(initialHub);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [pollOn, setPollOn] = useState(false);
   const [options, setOptions] = useState(["", ""]);
   const [flairs, setFlairs] = useState<Flair[]>([]);
@@ -37,31 +31,6 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
     browserSupabase().from("hub_flairs").select("id,label,color").eq("hub_id", hubId).order("label").then(({ data }) => setFlairs((data ?? []) as Flair[]));
   }, [hubId]);
 
-  async function addImages(files: FileList | null) {
-    if (!files?.length) return;
-    const room = MAX_IMAGES - images.length;
-    const list = [...files].slice(0, room);
-    if (list.some(f => f.size > MAX_BYTES)) return setError("Pictures can be up to 10 MB each.");
-    setUploading(true);
-    setError(null);
-    try {
-      const sb = browserSupabase();
-      // Each person uploads into a folder named after them (the bucket's rule).
-      const urls = await Promise.all(list.map(async f => {
-        const ext = f.type === "image/png" ? "png" : f.type === "image/webp" ? "webp" : f.type === "image/gif" ? "gif" : "jpg";
-        const path = `${uid}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await sb.storage.from("post-images").upload(path, f, { contentType: f.type || "image/jpeg" });
-        if (error) throw error;
-        return sb.storage.from("post-images").getPublicUrl(path).data.publicUrl;
-      }));
-      setImages(i => [...i, ...urls]);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function submit() {
     const poll = pollOn ? options.map(o => o.trim()).filter(Boolean) : [];
     const problem =
@@ -75,13 +44,13 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
       hub_id: hubId,
       post_title: title.trim(),
       post_body: body,
-      image: images.length === 1 ? images[0] : null,
+      image: null,
       poll_options: poll.length ? poll : null,
       flair,
       share_of: null,
       is_spoiler: spoiler,
       is_mature: mature,
-      images: images.length > 1 ? images : null,
+      images: null,
     });
     setBusy(false);
     if (error) return setError(errorMessage(error));
@@ -92,13 +61,18 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
   return (
     <div className="form-page" style={{ maxWidth: 720 }}>
       <h1>Create a post</h1>
-      <div className="field">
-        <label htmlFor="hub">Post to</label>
-        <select id="hub" value={hubId ?? ""} onChange={e => setHubId(e.target.value ? Number(e.target.value) : null)}>
-          <option value="">Your profile</option>
-          {hubs.map(h => <option key={h.id} value={h.id}>n/{h.name}</option>)}
-        </select>
-      </div>
+      {/* Started from inside a hub, the post goes there. */}
+      {initialHub != null ? (
+        <p className="muted" style={{ margin: 0 }}>Posting in <b style={{ color: "var(--ink)" }}>n/{hub?.name}</b></p>
+      ) : (
+        <div className="field">
+          <label htmlFor="hub">Post to</label>
+          <select id="hub" value={hubId ?? ""} onChange={e => setHubId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Your profile</option>
+            {hubs.map(h => <option key={h.id} value={h.id}>n/{h.name}</option>)}
+          </select>
+        </div>
+      )}
       {flairs.length > 0 && (
         <div className="field">
           <label htmlFor="flair">Prefix{hub?.flair_required ? "" : " (optional)"}</label>
@@ -113,16 +87,6 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
         <input id="title" value={title} maxLength={300} onChange={e => { setTitle(e.target.value); setError(null); }} />
       </div>
       <MarkdownEditor id="body" label="Text (optional)" value={body} onChange={setBody} maxLength={50000} imagesAllowed={imagesAllowed} />
-      {images.length > 0 && (
-        <div className="thumbs">
-          {images.map(u => (
-            <div key={u}>
-              <img src={u} alt="" />
-              <button aria-label="Remove picture" onClick={() => setImages(i => i.filter(x => x !== u))}><Icon icon={I.close} size={11} /></button>
-            </div>
-          ))}
-        </div>
-      )}
       {pollOn && (
         <div className="field">
           <label>Poll options</label>
@@ -136,18 +100,12 @@ export function CreatePost({ hubs, initialHub, uid }: { hubs: Hub[]; initialHub:
         </div>
       )}
       <div className="toolbar">
-        {imagesAllowed && (
-          <label className="btn quiet" style={{ cursor: images.length >= MAX_IMAGES ? "default" : "pointer" }}>
-            <Icon icon={I.imageOutline} size={14} /> {uploading ? "Uploading..." : "Pictures"}
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden disabled={uploading || images.length >= MAX_IMAGES} onChange={e => { addImages(e.target.files); e.target.value = ""; }} />
-          </label>
-        )}
         {pollsAllowed && <button className={`btn ${pollOn ? "" : "quiet"}`} onClick={() => setPollOn(p => !p)}>Poll</button>}
         <label className="check"><input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Spoiler</label>
         <label className="check"><input type="checkbox" checked={mature} onChange={e => setMature(e.target.checked)} /> 18+</label>
       </div>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
-      <button className="btn block" disabled={busy || uploading} onClick={submit}>{busy ? "Posting..." : "Post"}</button>
+      <button className="btn block" disabled={busy} onClick={submit}>{busy ? "Posting..." : "Post"}</button>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default async function ModmailPage({ params }: { params: Promise<{ id: st
   const mine = t.user_id === me.id;
   return (
     <main className="page single">
-      <div className="panel" style={{ display: "flex", flexDirection: "column", minHeight: "calc(100vh - 120px)" }}>
+      <div className="panel chat-panel">
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
           <Link href={mine ? "/messages?tab=mods" : `/n/${t.hub?.name}/settings?tab=mail`} className="icon-btn" aria-label="Back"><Icon icon={I.back} size={16} /></Link>
           <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>

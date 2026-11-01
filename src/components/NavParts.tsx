@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Children, useEffect, useState } from "react";
 
 const TOGGLE = "nakodu:menu";
 
@@ -29,6 +29,22 @@ export function NavDrawer({ children }: { children: React.ReactNode }) {
     <>
       {open && <div className="nav-back" onClick={() => setOpen(false)} />}
       <aside className={`leftnav ${open ? "open" : ""}`}>{children}</aside>
+    </>
+  );
+}
+
+/** A long list shows its first few, with Show all to open the rest. */
+export function NavMore({ limit, children }: { limit: number; children: React.ReactNode }) {
+  const [all, setAll] = useState(false);
+  const items = Children.toArray(children);
+  return (
+    <>
+      {all ? items : items.slice(0, limit)}
+      {items.length > limit && (
+        <button className="nav-link nav-more" onClick={() => setAll(a => !a)} aria-expanded={all}>
+          <span className="nav-label">{all ? "Show less" : "Show all"}</span>
+        </button>
+      )}
     </>
   );
 }
