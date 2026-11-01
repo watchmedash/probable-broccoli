@@ -1,5 +1,5 @@
 /** Shows at once when you follow a link, while the next page is fetched. */
-export default function Loading() {
+export function PageLoading() {
   return (
     <main className="page single" aria-busy="true" aria-label="Loading">
       <div className="feed">
