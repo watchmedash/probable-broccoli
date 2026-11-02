@@ -8,7 +8,7 @@ import { AskDialog, PickDialog } from "./Dialogs";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
 import { useToast } from "./Toast";
-import { forgetRecent } from "./RecentPosts";
+import { forgetRecent, tagRecent } from "./RecentPosts";
 
 export type PostMenuProps = {
   postId: number;
@@ -29,6 +29,7 @@ export type PostMenuProps = {
   canCrosspost: boolean;
   /** In a feed: the card disappears instead of the page moving away. */
   onGone?: () => void;
+  onTags?: (spoiler: boolean, mature: boolean) => void;
 };
 
 /** The post's ⋮ menu, with what the app offers: your own post, saving and hiding, and mod tools. */
@@ -44,6 +45,8 @@ export function PostMenu(p: PostMenuProps) {
   const sb = () => browserSupabase();
   const login = () => router.push(`/login?next=/p/${p.postId}`);
   const leave = () => { if (p.onGone) p.onGone(); else router.push("/"); };
+
+  const marked = (spoiler: boolean, mature: boolean) => { tagRecent(p.postId, spoiler, mature); p.onTags?.(spoiler, mature); };
 
   async function run(fn: () => PromiseLike<{ error: unknown }>, done?: () => void) {
     setOpen(false);
@@ -73,8 +76,8 @@ export function PostMenu(p: PostMenuProps) {
           {p.canCrosspost && item("share", "Crosspost", () => (p.myId ? router.push(`/submit?share=${p.postId}`) : login()))}
           {p.isStaff && item("pin", p.pinned ? "Unpin" : "Pin to the hub", () => run(() => sb().from("posts").update({ pinned_at: p.pinned ? null : new Date().toISOString() }).eq("id", p.postId)))}
           {p.isStaff && item("lock", p.locked ? "Unlock comments" : "Lock comments", () => run(() => sb().from("posts").update({ locked: !p.locked }).eq("id", p.postId)))}
-          {(mine || p.isStaff) && item("flag", p.spoiler ? "Remove spoiler tag" : "Mark as spoiler", () => run(() => sb().from("posts").update({ spoiler: !p.spoiler, mature: p.mature }).eq("id", p.postId)))}
-          {(mine || p.isStaff) && item("flag", p.mature ? "Remove 18+ tag" : "Mark as 18+", () => run(() => sb().from("posts").update({ spoiler: p.spoiler, mature: !p.mature }).eq("id", p.postId)))}
+          {(mine || p.isStaff) && item("flag", p.spoiler ? "Remove spoiler tag" : "Mark as spoiler", () => run(() => sb().from("posts").update({ spoiler: !p.spoiler, mature: p.mature }).eq("id", p.postId), () => marked(!p.spoiler, p.mature)))}
+          {(mine || p.isStaff) && item("flag", p.mature ? "Remove 18+ tag" : "Mark as 18+", () => run(() => sb().from("posts").update({ spoiler: p.spoiler, mature: !p.mature }).eq("id", p.postId), () => marked(p.spoiler, !p.mature)))}
           {(mine || p.isStaff) && p.hubId != null && item("edit", "Change prefix", async () => {
             setOpen(false);
             const { data } = await sb().from("hub_flairs").select("id,label,color").eq("hub_id", p.hubId).order("position").order("id");

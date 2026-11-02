@@ -11,7 +11,7 @@ const POST_BASE =
   `community:communities(id,name,color,icon_url,is_mature,link_domains,status,who_can_comment,allow_crossposts,created_by,privacy,who_can_post,allow_user_flair),${AUTHOR},` +
   `poll:poll_options(id,position,label,votes),flair:hub_flairs(id,label,color),` +
   // The post a crosspost shares (null when guests can't see it, or it was removed).
-  `original(id,title,body,image_url,image_urls,created_at,community:communities(id,name,color,icon_url),author:profiles!author_id(id,username,avatar_url))`;
+  `original(id,title,body,image_url,image_urls,spoiler,mature,created_at,community:communities(id,name,color,icon_url),author:profiles!author_id(id,username,avatar_url))`;
 /** Every post column for a signed-in reader (for embeds like saved posts). */
 export const POST_SELECT = `${POST_BASE},my_vote:post_votes(value),my_poll:poll_votes(option_id),my_save:saved_posts(post_id),my_follow:post_follows(post_id)`;
 const postColumns = (signedIn: boolean) =>

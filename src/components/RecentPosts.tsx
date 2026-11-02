@@ -5,14 +5,18 @@ import { useEffect, useState } from "react";
 import { timeAgo } from "@/lib/format";
 import { browserSupabase } from "@/lib/supabase/client";
 import { HubIcon } from "./Avatars";
+import { Icon, I } from "./Icon";
 
 const KEY = "nakodu:recent";
 const MAX = 10;
 
 export type RecentPost = {
   id: number; title: string; created_at: string; score: number; comments: number; image: string | null;
+  spoiler?: boolean; mature?: boolean;
   hub: { name: string; color: string; icon_url: string | null } | null; author: string | null;
 };
+
+type Fresh = { id: number; title: string; score: number; comment_count: number; spoiler: boolean; mature: boolean; image_url: string | null; image_urls: string[] | null; original: { spoiler: boolean; mature: boolean } | null };
 
 function read(): RecentPost[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch { return []; }
@@ -23,6 +27,11 @@ function write(list: RecentPost[]) {
     localStorage.setItem(KEY, JSON.stringify(list));
     window.dispatchEvent(new Event(KEY));
   } catch {}
+}
+
+/** Covers or uncovers a post on the list, once it's marked. */
+export function tagRecent(id: number, spoiler: boolean, mature: boolean) {
+  write(read().map(p => (p.id === id ? { ...p, spoiler, mature } : p)));
 }
 
 /** Takes a post off the list, once it's deleted or removed. */
@@ -45,14 +54,25 @@ export function RecentPosts() {
     const load = () => setItems(read());
     load();
     window.addEventListener(KEY, load);
-    // The list lives in this browser, so posts deleted since, here or elsewhere, have to be looked up. A failed lookup leaves it alone.
+    // The list lives in this browser, so what changed since, here or elsewhere, has to be looked up. A failed lookup leaves it alone.
     const ids = read().map(p => p.id);
     if (ids.length) {
-      Promise.resolve(browserSupabase().from("posts").select("id").in("id", ids)).then(({ data, error }) => {
+      Promise.resolve(browserSupabase().from("posts").select("id,title,score,comment_count,spoiler,mature,image_url,image_urls,original(spoiler,mature)").in("id", ids)).then(({ data, error }) => {
         if (error || !data) return;
-        const left = new Set(data.map((d: { id: number }) => d.id));
-        const gone = ids.filter(id => !left.has(id));
-        if (gone.length) write(read().filter(p => !gone.includes(p.id)));
+        const rows = data as unknown as Fresh[];
+        const before = read();
+        const after = before
+          .filter(p => !ids.includes(p.id) || rows.some(r => r.id === p.id))
+          .map(p => {
+            const r = rows.find(x => x.id === p.id);
+            if (!r) return p;
+            return {
+              ...p, title: r.title, score: r.score, comments: r.comment_count,
+              spoiler: r.spoiler || !!r.original?.spoiler, mature: r.mature || !!r.original?.mature,
+              image: r.image_urls?.[0] ?? r.image_url ?? p.image,
+            };
+          });
+        if (JSON.stringify(after) !== JSON.stringify(before)) write(after);
       }).catch(() => {});
     }
     return () => window.removeEventListener(KEY, load);
@@ -74,7 +94,12 @@ export function RecentPosts() {
             <span className="recent-title">{p.title}</span>
             <span className="muted small">{p.score === 1 ? "1 upvote" : `${p.score} upvotes`}   {p.comments === 1 ? "1 comment" : `${p.comments} comments`}</span>
           </span>
-          {p.image && <img src={p.image} alt="" loading="lazy" className="recent-thumb" />}
+          {p.image && (p.spoiler || p.mature ? (
+            <span className="recent-cover">
+              <img src={p.image} alt="" loading="lazy" className="recent-thumb" />
+              <span><Icon icon={I.eye} size={20} /></span>
+            </span>
+          ) : <img src={p.image} alt="" loading="lazy" className="recent-thumb" />)}
         </Link>
       ))}
     </section>

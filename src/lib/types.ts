@@ -63,7 +63,7 @@ export type Post = {
   my_save?: { post_id: number }[];
   my_follow?: { post_id: number }[];
   original?: {
-    id: number; title: string; body: string; image_url: string | null; image_urls: string[] | null; created_at: string;
+    id: number; title: string; body: string; image_url: string | null; image_urls: string[] | null; spoiler?: boolean; mature?: boolean; created_at: string;
     community: Pick<Hub, "id" | "name" | "color" | "icon_url"> | null;
     author: Pick<Profile, "id" | "username" | "avatar_url"> | null;
   } | null;

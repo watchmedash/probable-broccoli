@@ -10,6 +10,7 @@ import { Icon, I } from "./Icon";
 import { FollowButton } from "./JoinButton";
 import { ReportDialog } from "./Report";
 import { useToast } from "./Toast";
+import { ImageCropper } from "./ImageCropper";
 
 /** On someone else's profile: follow, message, and the ⋮ menu (block, report, and site bans for admins). */
 export function ProfileActions({ userId, username, following, blocked, banned, signedIn, admin }: {
@@ -64,8 +65,8 @@ export function SelfActions({ hasCover }: { hasCover: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  async function change(file: File | undefined, column: "avatar_url" | "cover_url") {
-    if (!file) return;
+  const [crop, setCrop] = useState<{ file: File; column: "avatar_url" | "cover_url" } | null>(null);
+  async function change(file: File, column: "avatar_url" | "cover_url") {
     setBusy(true);
     try {
       const url = await uploadImage(file, "avatars");
@@ -80,10 +81,19 @@ export function SelfActions({ hasCover }: { hasCover: boolean }) {
       setBusy(false);
     }
   }
+  const pick = (file: File | undefined, column: "avatar_url" | "cover_url") => { if (file) setCrop({ file, column }); };
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <label className="icon-btn" aria-label="Change picture" title="Change picture" aria-disabled={busy}><Icon icon={I.edit} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "avatar_url"); e.target.value = ""; }} /></label>
-      <label className="icon-btn" aria-label={hasCover ? "Change cover" : "Add a cover"} title={hasCover ? "Change cover" : "Add a cover"} aria-disabled={busy}><Icon icon={I.image} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { change(e.target.files?.[0], "cover_url"); e.target.value = ""; }} /></label>
+      {crop && (
+        <ImageCropper
+          file={crop.file}
+          shape={crop.column === "avatar_url" ? "avatar" : "cover"}
+          onCancel={() => setCrop(null)}
+          onDone={async cropped => { await change(cropped, crop.column); setCrop(null); }}
+        />
+      )}
+      <label className="icon-btn" aria-label="Change picture" title="Change picture" aria-disabled={busy}><Icon icon={I.edit} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { pick(e.target.files?.[0], "avatar_url"); e.target.value = ""; }} /></label>
+      <label className="icon-btn" aria-label={hasCover ? "Change cover" : "Add a cover"} title={hasCover ? "Change cover" : "Add a cover"} aria-disabled={busy}><Icon icon={I.image} size={16} /><input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { pick(e.target.files?.[0], "cover_url"); e.target.value = ""; }} /></label>
     </div>
   );
 }

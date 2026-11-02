@@ -14,6 +14,7 @@ import { Avatar, HubIcon } from "./Avatars";
 import { AskDialog } from "./Dialogs";
 import { Icon, I } from "./Icon";
 import { useToast } from "./Toast";
+import { ImageCropper } from "./ImageCropper";
 
 // Colours a hub can pick, as in the app. Blues first; never orange.
 const COLORS = ["#2563EB", "#0EA5E9", "#4F46E5", "#7C3AED", "#0D9488", "#10B981", "#EC4899", "#64748B", "#B91C1C", "#F59E0B", "#8B5CF6"];
@@ -91,10 +92,8 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
   const toast = useToast();
   const router = useRouter();
   const set = <K extends keyof typeof s>(k: K, v: (typeof s)[K]) => setS(x => ({ ...x, [k]: v }));
-  const upload = async (file: File | undefined, key: "icon_url" | "banner_url") => {
-    if (!file) return;
-    try { set(key, await uploadImage(file, "post-images")); } catch (e) { setError(errorMessage(e)); }
-  };
+  const [crop, setCrop] = useState<{ file: File; key: "icon_url" | "banner_url" } | null>(null);
+  const upload = (file: File | undefined, key: "icon_url" | "banner_url") => { if (file) setCrop({ file, key }); };
   async function save() {
     setBusy(true);
     setError(null);
@@ -121,7 +120,18 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
             <label className="btn quiet">Change icon<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { upload(e.target.files?.[0], "icon_url"); e.target.value = ""; }} /></label>
             {s.icon_url && <button className="linkish small" onClick={() => set("icon_url", null)}>Remove icon</button>}
           </div>
-          {s.banner_url && <img src={s.banner_url} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 1 }} />}
+          {crop && (
+            <ImageCropper
+              file={crop.file}
+              shape={crop.key === "icon_url" ? "icon" : "cover"}
+              onCancel={() => setCrop(null)}
+              onDone={async cropped => {
+                try { set(crop.key, await uploadImage(cropped, "post-images")); } catch (e) { setError(errorMessage(e)); }
+                setCrop(null);
+              }}
+            />
+          )}
+          {s.banner_url && <img src={s.banner_url} alt="" style={{ width: "100%", aspectRatio: "4", objectFit: "cover", borderRadius: 1 }} />}
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <label className="btn quiet">{s.banner_url ? "Change cover" : "Add a cover"}<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { upload(e.target.files?.[0], "banner_url"); e.target.value = ""; }} /></label>
             {s.banner_url && <button className="linkish small" onClick={() => set("banner_url", null)}>Remove cover</button>}

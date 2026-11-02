@@ -1,0 +1,29 @@
+"use client";
+/* eslint-disable @next/next/no-img-element */
+import Link from "next/link";
+import { plainText, timeAgo } from "@/lib/format";
+import { firstBodyImage } from "@/lib/mdedit";
+import type { Post } from "@/lib/types";
+import { Avatar, HubIcon } from "./Avatars";
+import { Covered } from "./Media";
+
+/** The post a crosspost shares: where it came from, its title, its picture and its text. Stays covered if the original is a spoiler or 18+. */
+export function OriginalCard({ original, spoiler = false, mature = false }: { original: NonNullable<Post["original"]>; spoiler?: boolean; mature?: boolean }) {
+  const picture = original.image_urls?.[0] ?? original.image_url ?? firstBodyImage(original.body);
+  const text = plainText(original.body, 240);
+  return (
+    <Link href={`/p/${original.id}`} className="panel" style={{ display: "block", padding: 12, margin: "8px 0", background: "var(--surface-2)" }}>
+      <span className="meta">
+        {original.community ? <><HubIcon hub={original.community} size={20} /><b>n/{original.community.name}</b></> : <><Avatar user={original.author} size={20} /><b>u/{original.author?.username ?? "deleted"}</b></>}
+        <span>{timeAgo(original.created_at)}</span>
+      </span>
+      <span className="card-title" style={{ fontSize: 17 }}>{original.title}</span>
+      {(picture || text) && (
+        <Covered spoiler={spoiler || !!original.spoiler} mature={mature || !!original.mature}>
+          {picture && <span className="media"><img src={picture} alt="" loading="lazy" /></span>}
+          {text && !picture && <span className="card-body">{text}</span>}
+        </Covered>
+      )}
+    </Link>
+  );
+}

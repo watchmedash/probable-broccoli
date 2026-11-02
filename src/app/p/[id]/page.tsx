@@ -10,6 +10,7 @@ import { Lightbox } from "@/components/Lightbox";
 import { Covered, VideoPlayer, YouTube } from "@/components/Media";
 import { Poll } from "@/components/Poll";
 import { LinkCard } from "@/components/LinkCard";
+import { OriginalCard } from "@/components/OriginalCard";
 import { RecentPosts, RecordVisit } from "@/components/RecentPosts";
 import { PostMenu } from "@/components/PostMenu";
 import { ShareButton, Votes } from "@/components/VoteBar";
@@ -159,18 +160,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody) }} />}
             </Lightbox>
           </Covered>
-          {post.original && (
-            // A crosspost shows the post it shares.
-            <Link href={`/p/${post.original.id}`} className="panel" style={{ display: "block", padding: 12, margin: "8px 0", background: "var(--surface-2)" }}>
-              <span className="meta">
-                {post.original.community ? <><HubIcon hub={post.original.community} size={20} /><b>n/{post.original.community.name}</b></> : <><Avatar user={post.original.author} size={20} /><b>u/{post.original.author?.username ?? "deleted"}</b></>}
-                <span>{timeAgo(post.original.created_at)}</span>
-              </span>
-              <span className="card-title" style={{ fontSize: 17 }}>{post.original.title}</span>
-              {(post.original.image_urls?.[0] ?? post.original.image_url) && <span className="media"><img src={post.original.image_urls?.[0] ?? post.original.image_url!} alt="" loading="lazy" /></span>}
-              {post.original.body && <span className="card-body">{plainText(post.original.body, 240)}</span>}
-            </Link>
-          )}
+          {post.original && <OriginalCard original={post.original} spoiler={post.spoiler} mature={post.mature} />}
           {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} blockedVideos={blockedVideos} />}
           {post.poll && post.poll.length > 0 && (
             <Poll postId={post.id} options={post.poll} mine={post.my_poll?.[0]?.option_id ?? null} signedIn={!!me} />
@@ -207,7 +197,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       </aside>
       <RecordVisit post={{
         id: post.id, title: post.title, created_at: post.created_at, score: post.score, comments: post.comment_count,
-        image: post.spoiler || post.mature ? null : images[0] ?? firstBodyImage(post.body) ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null),
+        image: images[0] ?? firstBodyImage(post.body) ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null) ?? post.original?.image_urls?.[0] ?? post.original?.image_url ?? (post.original ? firstBodyImage(post.original.body) : null),
+        spoiler: post.spoiler || !!post.original?.spoiler, mature: post.mature || !!post.original?.mature,
         hub: post.community ? { name: post.community.name, color: post.community.color, icon_url: post.community.icon_url } : null,
         author: post.author?.username ?? null,
       }} />

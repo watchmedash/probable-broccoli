@@ -54,7 +54,7 @@ export function NavLink({ href, icon, label, exact }: { href: string; icon: Reac
   const params = useSearchParams();
   const [p, q] = href.split("?");
   const feed = new URLSearchParams(q ?? "").get("feed");
-  const on = feed ? path === "/" && params.get("feed") === feed : exact ? path === p && (p !== "/" || !params.get("feed")) : path.startsWith(p);
+  const on = feed ? path === "/" && params.get("feed") === feed : exact ? path === p && (p !== "/" || !params.get("feed")) : path === p || path.startsWith(p + "/");
   return (
     <Link href={href} className={`nav-link ${on ? "on" : ""}`} aria-current={on ? "page" : undefined}>
       <span className="nav-icon">{icon}</span>

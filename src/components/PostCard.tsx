@@ -13,6 +13,7 @@ import { Avatar, HubIcon } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { JoinButton } from "./JoinButton";
 import { LinkCard } from "./LinkCard";
+import { OriginalCard } from "./OriginalCard";
 import { PostMenu } from "./PostMenu";
 import { ShareButton, Votes } from "./VoteBar";
 import { Covered, VideoPlayer, YouTube } from "./Media";
@@ -24,8 +25,12 @@ import { Covered, VideoPlayer, YouTube } from "./Media";
 export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; showHub: boolean; signedIn: boolean; viewer: Viewer | null }) {
   const [gone, setGone] = useState(false);
   const [linkPlays, setLinkPlays] = useState(false);
+  // Marked from this card's menu: covers it straight away, even on pages the server doesn't refresh.
+  const [tags, setTags] = useState<{ spoiler: boolean; mature: boolean } | null>(null);
   if (gone) return null;
   const href = `/p/${post.id}`;
+  const spoiler = tags?.spoiler ?? post.spoiler;
+  const mature = tags?.mature ?? post.mature;
   const inText = firstBodyImage(post.body);
   const images = post.image_urls?.length ? post.image_urls : post.image_url ? [post.image_url] : inText ? [inText] : [];
   const yt = images.length === 0 ? firstYouTube(post.body) : null;
@@ -67,8 +72,9 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
             followed={!!post.my_follow?.length}
             pinned={!!post.pinned_at}
             locked={post.locked}
-            spoiler={post.spoiler}
-            mature={post.mature}
+            spoiler={spoiler}
+            mature={mature}
+            onTags={(s, m) => setTags({ spoiler: s, mature: m })}
             flairId={post.flair?.id ?? null}
             isStaff={isStaff}
             canRemove={canRemove}
@@ -80,7 +86,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
       <Link href={href} className="card-title">{post.title}</Link>
       {/* Spoilers and 18+ posts stay blurred until the eye is tapped, with no label to announce them. */}
       {(images.length > 0 || yt || video || preview) && (
-        <Covered spoiler={post.spoiler} mature={post.mature}>
+        <Covered spoiler={spoiler} mature={mature}>
         <Link href={href} style={{ display: "block" }}>
           {images.length > 0 ? (
             <div className="media">
@@ -96,7 +102,8 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </Link>
         </Covered>
       )}
-      {firstLink && !post.spoiler && !post.mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} />}
+      {post.original && <OriginalCard original={post.original} spoiler={spoiler} mature={mature} />}
+      {firstLink && !spoiler && !mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} />}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
         <Link href={`${href}#comments`} className="act" aria-label={countLabel(post.comment_count, "comment")}>
