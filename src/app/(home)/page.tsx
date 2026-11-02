@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FeedList } from "@/components/FeedList";
 import { RecentPosts } from "@/components/RecentPosts";
 import { SortTabs } from "@/components/SortTabs";
-import { fetchHubPrefs, fetchPosts, fetchViewer, followingIds, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
+import { fetchHubPrefs, fetchPosts, fetchViewer, followingIds, hotOrder, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 type Feed = "popular" | "all" | "following";
@@ -34,10 +34,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       query.popular = { allHubs: prefs.filter(p => p.level === "all").map(p => p.hub_id), since };
     }
   }
+  // Hot here is a shuffle, so it isn't the same list as New. Hub feeds keep the plain ranking.
+  const shuffled = feed !== "popular" && !users && query.sort === "hot";
+  if (shuffled) query.order = await hotOrder(sb, query, !!me);
   let page = await fetchPosts(sb, query, !!me);
   // A quiet week shouldn't mean an empty home page.
   if (query.popular && page.posts.length === 0) {
     query = { ...query, popular: undefined };
+    if (shuffled) query.order = await hotOrder(sb, query, !!me);
     page = await fetchPosts(sb, query, !!me);
   }
   const tabs: [Feed, string][] = [["popular", "Popular"], ["all", "All"], ...(me ? [["following", "Following"] as [Feed, string]] : [])];

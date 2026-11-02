@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PAGE_SIZE, SUPABASE_KEY, SUPABASE_URL } from "./config";
+import { shuffleHot, type HotCandidate } from "./hotOrder";
 import type { Comment, Hub, Notification, Post, Profile } from "./types";
 
 // The same columns the Android app reads (data/Repositories.kt).
@@ -30,6 +31,7 @@ export const RANGES: Record<Range, { label: string; days: number | null }> = {
 };
 const SORT_COLUMN: Record<Sort, string> = { hot: "hot", new: "created_at", top: "score" };
 const FEED_BODY_CHARS = 2000;
+const HOT_POOL = 500;
 
 export type FeedQuery = {
   sort: Sort;
@@ -48,6 +50,8 @@ export type FeedQuery = {
   muted?: number[];
   /** Hubs you left on Popular show only what people liked or what's new; these hubs show everything. */
   popular?: { allHubs: number[]; since: string };
+  /** A shuffled Hot feed: these posts, in this order. */
+  order?: number[];
 };
 
 /** Who's looking at a feed, for the card's Join button and ⋮ menu. */
@@ -71,11 +75,9 @@ export const parseSort = (s?: string): Sort => (s === "new" || s === "top" ? s :
 export const parseRange = (r?: string, fallback: Range = "all"): Range => (r && r in RANGES ? (r as Range) : fallback);
 const likeText = (w: string) => w.replace(/[\\%_]/g, m => "\\" + m);
 
-/** One page of posts, newest rules first: pinned posts lead inside a hub. */
-export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boolean): Promise<{ posts: Post[]; next: number | null }> {
-  const offset = q.offset ?? 0;
-  if (q.hubIds && q.hubIds.length === 0 && !(q.peopleIds?.length)) return { posts: [], next: null };
-  let query = sb.from("posts").select(signedIn ? postColumns(true) + ",hidden_posts(post_id)" : postColumns(false));
+/** The posts a feed may show, before any ordering. */
+function feedRows(sb: SupabaseClient, q: FeedQuery, signedIn: boolean, columns: string) {
+  let query = sb.from("posts").select(signedIn ? columns + ",hidden_posts(post_id)" : columns);
   if (signedIn) query = query.is("hidden_posts", null);
   const days = q.sort === "top" ? RANGES[q.range ?? "all"].days : null;
   if (days) query = query.gte("created_at", new Date(Date.now() - days * 86400000).toISOString());
@@ -97,13 +99,39 @@ export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boo
   } else if (q.hubIds) query = query.in("community_id", q.hubIds);
   const words = (q.search ?? "").trim().split(/\s+/).filter(Boolean).slice(0, 6);
   for (const w of words) query = query.or(`title.ilike.%${likeText(w)}%,body.ilike.%${likeText(w)}%`);
+  return query;
+}
+
+// Lists only show a preview, so a long story doesn't get sent to the browser in full.
+const trimmed = (rows: unknown) => ((rows ?? []) as Post[]).map(p => (p.body.length > FEED_BODY_CHARS ? { ...p, body: p.body.slice(0, FEED_BODY_CHARS) } : p));
+
+/** The order of a home Hot feed: a fresh shuffle each visit that favours what people voted on and talked about. */
+export async function hotOrder(sb: SupabaseClient, q: FeedQuery, signedIn: boolean): Promise<number[]> {
+  if (q.hubIds && q.hubIds.length === 0 && !(q.peopleIds?.length)) return [];
+  const { data, error } = await feedRows(sb, q, signedIn, "id,score,comment_count,created_at").order("hot", { ascending: false }).limit(HOT_POOL);
+  if (error) throw error;
+  return shuffleHot((data ?? []) as unknown as HotCandidate[]);
+}
+
+/** One page of posts, newest rules first: pinned posts lead inside a hub. */
+export async function fetchPosts(sb: SupabaseClient, q: FeedQuery, signedIn: boolean): Promise<{ posts: Post[]; next: number | null }> {
+  const offset = q.offset ?? 0;
+  if (q.order) {
+    const ids = q.order.slice(offset, offset + PAGE_SIZE);
+    if (ids.length === 0) return { posts: [], next: null };
+    const { data, error } = await feedRows(sb, q, signedIn, postColumns(signedIn)).in("id", ids);
+    if (error) throw error;
+    const posts = trimmed(data).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    return { posts, next: offset + PAGE_SIZE < q.order.length ? offset + PAGE_SIZE : null };
+  }
+  if (q.hubIds && q.hubIds.length === 0 && !(q.peopleIds?.length)) return { posts: [], next: null };
+  let query = feedRows(sb, q, signedIn, postColumns(signedIn));
   if (q.hubId != null) query = query.order("pinned_at", { ascending: false, nullsFirst: false });
   query = query.order(SORT_COLUMN[q.sort], { ascending: false });
   if (q.sort !== "new") query = query.order("created_at", { ascending: false });
   const { data, error } = await query.range(offset, offset + PAGE_SIZE - 1);
   if (error) throw error;
-  // Lists only show a preview, so a long story doesn't get sent to the browser in full.
-  const posts = ((data ?? []) as unknown as Post[]).map(p => (p.body.length > FEED_BODY_CHARS ? { ...p, body: p.body.slice(0, FEED_BODY_CHARS) } : p));
+  const posts = trimmed(data);
   return { posts, next: posts.length === PAGE_SIZE ? offset + PAGE_SIZE : null };
 }
 

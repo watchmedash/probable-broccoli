@@ -260,6 +260,7 @@ img { max-width: 100%; }
 .head-row.no-banner .head-title { padding-top: 0; }
 .head-title h1 { margin: 0; font-size: 26px; line-height: 1.2; word-break: break-word; }
 .head-desc { padding: 0 16px 14px; color: var(--muted); }
+@media (min-width: 1001px) { .no-side { display: none; } }
 .rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .rules li { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .rules li:last-child { border-bottom: 0; padding-bottom: 0; }

@@ -5,6 +5,30 @@ import { buildTree, type CommentSort } from "./comments";
 import { renderMarkdown } from "./markdown";
 import { youTubeId } from "./youtube";
 import { firstBodyImage, imageMarkdown, isImageUrl, linePrefix, wrapSelection } from "./mdedit";
+import { hotWeight, shuffleHot } from "./hotOrder";
+
+describe("shuffleHot", () => {
+  const now = new Date("2026-11-02T12:00:00Z").getTime();
+  const post = (id: number, score = 0, comment_count = 0, created_at = "2026-11-02T11:00:00Z") => ({ id, score, comment_count, created_at });
+  const seeded = (seed: number) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  it("keeps every post exactly once", () => {
+    const posts = [post(1), post(2), post(3), post(4)];
+    expect(shuffleHot(posts, now, seeded(7)).sort()).toEqual([1, 2, 3, 4]);
+  });
+  it("doesn't just list the newest first when nobody has voted", () => {
+    const posts = Array.from({ length: 50 }, (_, i) => post(i, 0, 0, new Date(now - i * 3600000).toISOString()));
+    expect(shuffleHot(posts, now, seeded(7))).not.toEqual(posts.map(p => p.id));
+  });
+  it("favours votes and comments, and sinks downvoted posts", () => {
+    expect(hotWeight(post(1, 10, 5), now)).toBeGreaterThan(hotWeight(post(2), now));
+    expect(hotWeight(post(3, -5), now)).toBeLessThan(hotWeight(post(2), now));
+    const random = seeded(11);
+    let first = 0;
+    for (let i = 0; i < 200; i++) if (shuffleHot([post(1, 50, 10), post(2), post(3)], now, random)[0] === 1) first++;
+    expect(first).toBeGreaterThan(180);
+  });
+});
 
 describe("timeAgo", () => {
   const now = new Date("2026-10-30T12:00:00Z");

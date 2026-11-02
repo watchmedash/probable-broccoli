@@ -74,7 +74,8 @@ export default async function HubPage({ params, searchParams }: { params: Promis
               <JoinButton hubId={hub.id} joined={joined} requested={!!request?.data} isPrivate={hub.privacy === "private"} signedIn={!!me} />
             </div>
           </div>
-          {hub.description && <p className="head-desc">{hub.description}</p>}
+          {/* Narrow screens have no About panel. */}
+          {hub.description && <p className="no-side head-desc">{hub.description}</p>}
           {rules.length > 0 && (
             // Phones have no sidebar, so the rules fold out here.
             <details className="show-sm head-desc" style={{ paddingTop: 0 }}>

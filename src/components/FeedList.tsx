@@ -15,16 +15,21 @@ export function FeedList({ initial, next, query, showHub, signedIn, viewer, empt
   const [offset, setOffset] = useState(next);
   const [loading, setLoading] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
-  const shown = useRef(JSON.stringify(query));
+  // A shuffled feed gets a new order on every server render, so the order isn't part of what makes a feed the same one.
+  const feedKey = JSON.stringify({ ...query, order: undefined });
+  const shown = useRef(feedKey);
+  const order = useRef(query.order);
 
   useEffect(() => {
-    const key = JSON.stringify(query);
-    if (key !== shown.current) {
-      shown.current = key;
+    if (feedKey !== shown.current) {
+      shown.current = feedKey;
+      order.current = query.order;
       setPosts(initial);
       setOffset(next);
       return;
     }
+    // Joining a hub or the like shouldn't reshuffle what you're reading.
+    if (order.current) return;
     // Same feed, fresh first page (you joined a hub, say): keep what you've scrolled through.
     setPosts(p => [...initial, ...p.slice(initial.length).filter(o => !initial.some(n => n.id === o.id))]);
     // The query is rebuilt on each render, so it's compared by its text above.
@@ -38,7 +43,7 @@ export function FeedList({ initial, next, query, showHub, signedIn, viewer, empt
       if (!entries[0].isIntersecting || loading) return;
       setLoading(true);
       try {
-        const page = await fetchPosts(browserSupabase(), { ...query, offset }, signedIn);
+        const page = await fetchPosts(browserSupabase(), { ...query, order: order.current, offset }, signedIn);
         setPosts(p => [...p, ...page.posts.filter(n => !p.some(o => o.id === n.id))]);
         setOffset(page.next);
       } finally {

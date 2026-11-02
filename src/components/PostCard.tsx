@@ -1,10 +1,12 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Post } from "@/lib/types";
 import { myVote } from "@/lib/types";
 import { countLabel, plainText, timeAgo } from "@/lib/format";
+import { guestOpens } from "@/lib/guestOpens";
 import { firstBodyImage } from "@/lib/mdedit";
 import type { Viewer } from "@/lib/queries";
 import { firstVideo, withoutBareLink } from "@/lib/video";
@@ -23,12 +25,14 @@ import { Covered, VideoPlayer, YouTube } from "./Media";
  * (like the app). Prefixes and tags only show on the post page.
  */
 export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; showHub: boolean; signedIn: boolean; viewer: Viewer | null }) {
+  const router = useRouter();
   const [gone, setGone] = useState(false);
   const [linkPlays, setLinkPlays] = useState(false);
   // Marked from this card's menu: covers it straight away, even on pages the server doesn't refresh.
   const [tags, setTags] = useState<{ spoiler: boolean; mature: boolean } | null>(null);
   if (gone) return null;
   const href = `/p/${post.id}`;
+  const open = guestOpens(signedIn, router, href);
   const spoiler = tags?.spoiler ?? post.spoiler;
   const mature = tags?.mature ?? post.mature;
   const inText = firstBodyImage(post.body);
@@ -83,11 +87,11 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
           />
         </span>
       </div>
-      <Link href={href} className="card-title">{post.title}</Link>
+      <Link href={href} className="card-title" onClick={open}>{post.title}</Link>
       {/* Spoilers and 18+ posts stay blurred until the eye is tapped, with no label to announce them. */}
       {(images.length > 0 || yt || video || preview) && (
         <Covered spoiler={spoiler} mature={mature}>
-        <Link href={href} style={{ display: "block" }}>
+        <Link href={href} style={{ display: "block" }} onClick={open}>
           {images.length > 0 ? (
             <div className="media">
               <img src={images[0]} alt="" loading="lazy" />
@@ -102,11 +106,11 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </Link>
         </Covered>
       )}
-      {post.original && <OriginalCard original={post.original} spoiler={spoiler} mature={mature} />}
+      {post.original && <OriginalCard original={post.original} spoiler={spoiler} mature={mature} signedIn={signedIn} />}
       {firstLink && !spoiler && !mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} />}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
-        <Link href={`${href}#comments`} className="act" aria-label={countLabel(post.comment_count, "comment")}>
+        <Link href={`${href}#comments`} className="act" onClick={open} aria-label={countLabel(post.comment_count, "comment")}>
           <Icon icon={I.comment} size={15} /> {post.comment_count}
         </Link>
         <ShareButton id={post.id} />
