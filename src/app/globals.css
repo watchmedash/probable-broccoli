@@ -80,6 +80,8 @@ img { max-width: 100%; }
   .app-bar a { margin-left: auto; font-weight: 700; text-decoration: underline; }
 }
 @media (min-width: 761px) { .show-sm { display: none !important; } }
+/* iPhones zoom the page when you tap a box with smaller text than this. */
+@media (pointer: coarse) { input, textarea, select { font-size: 16px !important; } }
 
 /* ------------------------------------------------------------------ layout */
 /* Full width: left column, the page, and a right column that scrolls on its own when it's taller than the screen. */

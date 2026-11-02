@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -30,20 +30,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const jar = await cookies();
   const theme = jar.get("theme")?.value === "dark" ? "dark" : "light";
   const collapsed = jar.get("nav")?.value === "collapsed";
+  // The app is Android only, so other phones don't get offered it.
+  const agent = (await headers()).get("user-agent") ?? "";
+  const android = /Android/i.test(agent);
+  const ios = /iPhone|iPad|iPod/i.test(agent);
   return (
     <html lang="en" className={roboto.variable} data-theme={theme}>
       <body>
         <ToastProvider>
-          <div className="app-bar">
-            <span>Nakodu is better in the app</span>
-            <a href="/download/nakodu.apk">Get it for Android</a>
-          </div>
+          {android && (
+            <div className="app-bar">
+              <span>Nakodu is better in the app</span>
+              <a href="/download/nakodu.apk">Get it for Android</a>
+            </div>
+          )}
           <Suspense>
             <Header />
           </Suspense>
           <div className={`shell ${collapsed ? "collapsed" : ""}`}>
             <Suspense>
-              <LeftNav theme={theme} />
+              <LeftNav theme={theme} ios={ios} />
             </Suspense>
             <CollapseButton />
             <div className="shell-main">{children}</div>

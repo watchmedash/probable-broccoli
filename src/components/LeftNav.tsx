@@ -6,7 +6,7 @@ import { Icon, I } from "./Icon";
 import { NavDrawer, NavLink, NavMore, ThemeSwitch } from "./NavParts";
 
 /** The left column: feeds, hubs you're in, and the small print. On phones it opens from the header's menu button. */
-export async function LeftNav({ theme }: { theme: string }) {
+export async function LeftNav({ theme, ios }: { theme: string; ios: boolean }) {
   const me = await currentUser();
   const sb = await serverSupabase();
   const [hubs, mine] = await Promise.all([fetchHubs(sb), me ? myHubIds(sb, me.id) : Promise.resolve([] as number[])]);
@@ -43,7 +43,7 @@ export async function LeftNav({ theme }: { theme: string }) {
         <Link href="/terms">Terms</Link>
         <Link href="/child-safety">Child safety</Link>
         <Link href="/delete-account">Delete account</Link>
-        <a href="/download/nakodu.apk">Android app</a>
+        {!ios && <a href="/download/nakodu.apk">Android app</a>}
         <ThemeSwitch initial={theme} />
       </div>
     </NavDrawer>
