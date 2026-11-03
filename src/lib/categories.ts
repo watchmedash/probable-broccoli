@@ -1,6 +1,6 @@
 // The hub categories, in the order they're shown. The database keeps the same list (hub_category_list).
 export const CATEGORIES: [slug: string, label: string][] = [
-  ["discussion", "Discussion"], ["news", "News"], ["politics", "Politics"], ["philippines", "Philippines"],
+  ["discussion", "Discussion"], ["news", "News"], ["politics", "Politics"],
   ["humor", "Humor & Memes"], ["entertainment", "Entertainment"], ["movies-tv", "Movies & TV"], ["music", "Music"],
   ["gaming", "Gaming"], ["tech", "Technology"], ["science", "Science"], ["learning", "Learning"],
   ["books", "Books & Writing"], ["horror", "Horror & Mystery"], ["food", "Food & Drink"], ["travel", "Travel"],
