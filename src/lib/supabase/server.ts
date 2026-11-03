@@ -25,6 +25,10 @@ export const currentUser = cache(async () => {
   const { data } = await sb.auth.getUser();
   const u = data.user;
   if (!u) return null;
-  const username = (u.user_metadata?.username as string | undefined) ?? u.email?.split("@")[0] ?? "me";
-  return { id: u.id, username };
+  let username = u.user_metadata?.username as string | undefined;
+  if (!username) {
+    const { data: p } = await sb.from("profiles").select("username").eq("id", u.id).maybeSingle();
+    username = p?.username ?? "me";
+  }
+  return { id: u.id, username: username! };
 });

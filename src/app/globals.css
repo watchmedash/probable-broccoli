@@ -330,6 +330,9 @@ img { max-width: 100%; }
 .dialog { width: 100%; max-width: 420px; background: var(--surface); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .dialog h2 { margin: 0; font-size: 18px; }
 .dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
+.google-btn { gap: 10px; }
+.or-line { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+.or-line::before, .or-line::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
 @media (max-width: 560px) { .picker { grid-template-columns: 1fr; } }
 .picker label { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; min-width: 0; }
