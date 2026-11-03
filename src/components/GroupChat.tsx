@@ -79,7 +79,7 @@ export function GroupChat({ id, me, name, initial, members: members0, hubs }: {
           const quoted = m.reply_to ? msgs.find(x => x.id === m.reply_to) : null;
           return quoted ? <div className="chat-quote">{quoted.body || "Picture"}</div> : null;
         }}
-        corner={m => <ReactionBadge reactions={m.reactions} me={me} onReact={e => react(m, e)} />}
+        corner={m => <ReactionBadge reactions={m.reactions} me={me} onReact={m.sender_id === me ? undefined : e => react(m, e)} />}
         menu={m => (
           <BubbleMenu
             mine={m.sender_id === me}

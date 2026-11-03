@@ -78,7 +78,7 @@ export function MessageList({ messages, isMine, label, above, below, menu, hubs,
 }
 
 /** Reactions as a small badge on the bubble's corner; tap one to change or take back yours. */
-export function ReactionBadge({ reactions, me, onReact }: { reactions?: Reaction[]; me: string; onReact: (emoji: string) => void }) {
+export function ReactionBadge({ reactions, me, onReact }: { reactions?: Reaction[]; me: string; onReact?: (emoji: string) => void }) {
   const counts = new Map<string, { n: number; mine: boolean }>();
   for (const r of reactions ?? []) {
     const c = counts.get(r.emoji) ?? { n: 0, mine: false };
@@ -87,7 +87,7 @@ export function ReactionBadge({ reactions, me, onReact }: { reactions?: Reaction
   if (counts.size === 0) return null;
   return (
     <div className="chat-reactions">
-      {[...counts].map(([e, c]) => <button key={e} className={c.mine ? "on" : ""} aria-label={`${e} ${c.n}`} onClick={() => onReact(e)}>{e}{c.n > 1 ? c.n : ""}</button>)}
+      {[...counts].map(([e, c]) => <button key={e} className={c.mine ? "on" : ""} aria-label={`${e} ${c.n}`} disabled={!onReact} style={onReact ? undefined : { cursor: "default" }} onClick={() => onReact?.(e)}>{e}{c.n > 1 ? c.n : ""}</button>)}
     </div>
   );
 }
@@ -175,9 +175,12 @@ export function BubbleMenu({ mine, onReact, onReply, onReport, onDelete }: { min
       </button>
       {open && (
         <div className="menu" style={{ top: open === "down" ? 30 : "auto", bottom: open === "up" ? 30 : "auto", right: mine ? 0 : "auto", left: mine ? "auto" : 0 }}>
-          <div className="reaction-row">
-            {REACTIONS.map(e => <button key={e} aria-label={`React with ${e}`} onClick={run(() => onReact(e))}>{e}</button>)}
-          </div>
+          {/* Reactions are for other people's messages. */}
+          {!mine && (
+            <div className="reaction-row">
+              {REACTIONS.map(e => <button key={e} aria-label={`React with ${e}`} onClick={run(() => onReact(e))}>{e}</button>)}
+            </div>
+          )}
           <button onClick={run(onReply)}><Icon icon={I.comment} size={14} /> Reply</button>
           {mine
             ? <button onClick={run(onDelete)} style={{ color: "var(--error)" }}><Icon icon={I.trash} size={14} /> Delete</button>
@@ -258,7 +261,7 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
           const quoted = m.reply_to ? msgs.find(x => x.id === m.reply_to) : null;
           return quoted ? <div className="chat-quote">{quoted.body || "Picture"}</div> : null;
         }}
-        corner={m => <ReactionBadge reactions={m.reactions} me={me} onReact={e => react(m, e)} />}
+        corner={m => <ReactionBadge reactions={m.reactions} me={me} onReact={m.sender_id === me ? undefined : e => react(m, e)} />}
         below={m => m.id === seenId ? <div className="muted small" style={{ margin: "2px 4px 0", textAlign: "right", fontSize: 11 }}>Seen</div> : null}
         menu={m => (
           <BubbleMenu
