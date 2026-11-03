@@ -74,7 +74,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
             <div style={{ paddingTop: hub.banner_url ? 36 : 0, display: "flex", gap: 8 }}>
               {access.isStaff && <Link href={`/n/${hub.name}/settings`} className="icon-btn" aria-label="Hub settings"><Icon icon={I.settings} size={18} /></Link>}
               {(joined || access.isStaff) && <Link href={`/submit?hub=${hub.name}`} className="icon-btn" aria-label="Create a post"><Icon icon={I.plus} size={18} /></Link>}
-              {me && joined && <FavoriteStar hubId={hub.id} hubName={hub.name} on={favorite} className="icon-btn hub-fav" />}
+              {me && <FavoriteStar hubId={hub.id} hubName={hub.name} on={favorite} className="icon-btn hub-fav" />}
               <HubBell hubId={hub.id} hubName={hub.name} level={pref ?? "popular"} uid={me?.id ?? null} />
               <JoinButton hubId={hub.id} joined={joined} requested={!!request?.data} isPrivate={hub.privacy === "private"} signedIn={!!me} />
             </div>

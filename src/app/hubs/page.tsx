@@ -3,7 +3,8 @@ import Link from "next/link";
 import { HubIcon } from "@/components/Avatars";
 import { Icon, I } from "@/components/Icon";
 import { JoinButton } from "@/components/JoinButton";
-import { fetchHubs, myHubIds } from "@/lib/queries";
+import { FavoriteStar } from "@/components/FavoriteStar";
+import { favoriteHubIds, fetchHubs, myHubIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Hubs", description: "Every hub on Nakodu.", alternates: { canonical: "/hubs" } };
@@ -13,7 +14,13 @@ export default async function HubsPage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const me = await currentUser();
   const sb = await serverSupabase();
-  const [hubs, mine] = await Promise.all([fetchHubs(sb), me ? myHubIds(sb, me.id) : Promise.resolve([] as number[])]);
+  const [all, mine, favs] = await Promise.all([
+    fetchHubs(sb),
+    me ? myHubIds(sb, me.id) : Promise.resolve([] as number[]),
+    me ? favoriteHubIds(sb, me.id) : Promise.resolve([] as number[]),
+  ]);
+  // Starred hubs lead each list.
+  const hubs = [...all].sort((a, b) => Number(favs.includes(b.id)) - Number(favs.includes(a.id)));
   const joined = hubs.filter(h => mine.includes(h.id));
   const others = hubs.filter(h => !mine.includes(h.id));
   // New accounts have nothing joined, so they start on the other tab.
@@ -37,6 +44,7 @@ export default async function HubsPage({ searchParams }: { searchParams: Promise
           <Link key={h.id} href={`/n/${h.name}`} className="hub-row">
             <HubIcon hub={h} size={44} />
             <span className="name">n/{h.name}</span>
+            {me && <FavoriteStar hubId={h.id} hubName={h.name} on={favs.includes(h.id)} className="icon-btn hub-fav" />}
             <JoinButton hubId={h.id} joined={mine.includes(h.id)} isPrivate={h.privacy === "private"} signedIn={!!me} small />
           </Link>
         ))}
