@@ -1,4 +1,7 @@
-export type HotCandidate = { id: number; score: number; comment_count: number; created_at: string };
+export type HotCandidate = { id: number; score: number; comment_count: number; created_at: string; community_id?: number | null };
+
+/** Posts from hubs in your interests come up this many times more often. */
+const INTEREST_BOOST = 3;
 
 const HALF_LIFE_DAYS = 14;
 
@@ -11,9 +14,9 @@ export function hotWeight(p: HotCandidate, now: number): number {
 }
 
 /** A weighted shuffle: every post gets a place, and heavier posts tend to come first. */
-export function shuffleHot(posts: HotCandidate[], now = Date.now(), random: () => number = Math.random): number[] {
+export function shuffleHot(posts: HotCandidate[], now = Date.now(), random: () => number = Math.random, boost?: Set<number>): number[] {
   return posts
-    .map(p => ({ id: p.id, key: random() ** (1 / hotWeight(p, now)) }))
+    .map(p => ({ id: p.id, key: random() ** (1 / (hotWeight(p, now) * (p.community_id != null && boost?.has(p.community_id) ? INTEREST_BOOST : 1))) }))
     .sort((a, b) => b.key - a.key)
     .map(p => p.id);
 }

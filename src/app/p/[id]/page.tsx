@@ -20,6 +20,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { blockedIds, fetchComments, fetchPost, hubAccess, hubNames, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
+import { HeldNotice } from "@/components/HeldNotice";
 import { firstBodyImage } from "@/lib/mdedit";
 import { firstVideo, isBlockedVideo, videoLink, withoutBareLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
@@ -46,8 +47,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { me, sb, post } = await load(Number((await params).id));
+  // A shared comment link (?c=12) opens on that comment and its replies.
+  const focus = Number((await searchParams).c) || null;
   if (!post) notFound();
   const hub = post.community;
   const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, blockedVideos, hubs] = await Promise.all([
@@ -145,6 +148,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               />
             </span>
           </div>
+          {post.held && <HeldNotice postId={post.id} canApprove={access.canRemove} />}
           <h1>{post.title}</h1>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {post.flair && <span className="flair" style={{ background: post.flair.color }}>{post.flair.label}</span>}
@@ -181,6 +185,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           allowedDomains={allowed}
           hubs={hubs}
           opId={post.author?.id ?? null}
+          hubId={hub?.id ?? null}
+          allowImages={hub ? hub.allow_comment_images !== false : true}
+          focus={focus}
           canRemove={access.canRemove}
           blocked={blocked}
           userFlairs={userFlairs}

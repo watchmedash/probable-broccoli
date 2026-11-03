@@ -51,8 +51,9 @@ export function Lightbox({ children }: { children: React.ReactNode }) {
       className="zoomable"
       onClick={e => {
         const img = e.target as HTMLElement;
-        if (img.tagName !== "IMG" || img.closest(".yt") || img.closest(".cover.blur")) return;
-        const list = [...(box.current?.querySelectorAll<HTMLImageElement>("img") ?? [])].filter(i => !i.closest(".yt")).map(i => i.src);
+        const skip = (i: Element) => !!i.closest(".yt, .avatar, .hub-icon, .viewable") || i.classList.contains("avatar");
+        if (img.tagName !== "IMG" || skip(img) || img.closest(".cover.blur")) return;
+        const list = [...(box.current?.querySelectorAll<HTMLImageElement>("img") ?? [])].filter(i => !skip(i)).map(i => i.src);
         setUrls(list);
         setAt(Math.max(0, list.indexOf((img as HTMLImageElement).src)));
       }}

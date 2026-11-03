@@ -3,8 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
-import type { Hub } from "@/lib/types";
-import { HubIcon } from "./Avatars";
+import { CategoryPicker } from "./CategoryPicker";
 import { Icon, I } from "./Icon";
 
 /**
@@ -50,40 +49,28 @@ export function RecoveryCodes() {
   );
 }
 
-/** Right after sign-up: tap the hubs you like, then join them all at once, so Following isn't empty. */
-export function PickHubs({ hubs }: { hubs: Hub[] }) {
-  const [picked, setPicked] = useState<Set<number>>(new Set());
+/** Right after sign-up: pick at least three interests. Hubs in them come up more in your home feed. */
+export function PickInterests() {
+  const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   async function finish() {
     setBusy(true);
-    const sb = browserSupabase();
-    // A hub that fails to join can be joined later from Hubs; don't hold the person up.
-    await Promise.all([...picked].map(id => sb.from("hub_members").insert({ hub_id: id })));
-    router.push(picked.size ? "/?feed=following" : "/");
+    const { error } = await browserSupabase().from("user_interests").insert(picked.map(category => ({ category })));
+    setBusy(false);
+    if (error && error.code !== "23505") return setError(errorMessage(error));
+    router.push("/");
     router.refresh();
   }
   return (
     <div className="form-page" style={{ maxWidth: 820 }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <h1 style={{ flex: 1 }}>Pick some hubs</h1>
-        <button className="linkish" onClick={() => { router.push("/"); router.refresh(); }}>Skip</button>
-      </div>
-      <p className="muted" style={{ margin: 0 }}>Posts from the hubs you join show up in Following.</p>
-      <div className="picker">
-        {hubs.map(h => (
-          <label key={h.id}>
-            <input type="checkbox" checked={picked.has(h.id)} onChange={() => setPicked(p => { const n = new Set(p); if (n.has(h.id)) n.delete(h.id); else n.add(h.id); return n; })} style={{ width: 20, height: 20, accentColor: "var(--blue)" }} />
-            <HubIcon hub={h} size={40} />
-            <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <b>n/{h.name}</b>
-              {h.description && <span className="muted small desc" title={h.description}>{h.description}</span>}
-            </span>
-          </label>
-        ))}
-      </div>
-      <button className="btn block" disabled={busy} onClick={finish}>
-        {picked.size === 0 ? "Continue" : picked.size === 1 ? "Join 1 hub" : `Join ${picked.size} hubs`}
+      <h1>What are you into?</h1>
+      <p className="muted" style={{ margin: 0 }}>Pick at least 3. Hubs about them show up more in your home feed.</p>
+      <CategoryPicker value={picked} onChange={setPicked} />
+      {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
+      <button className="btn block" disabled={busy || picked.length < 3} onClick={finish}>
+        {picked.length < 3 ? `Pick ${3 - picked.length} more` : "Continue"}
       </button>
     </div>
   );

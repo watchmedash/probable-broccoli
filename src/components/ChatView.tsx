@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAutoGrow } from "@/lib/autogrow";
+import { uploadImage } from "@/lib/upload";
+import { Lightbox } from "./Lightbox";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { timeAgo } from "@/lib/format";
@@ -10,16 +12,16 @@ import { AskDialog } from "./Dialogs";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
 
-type Reaction = { emoji: string; user_id: string };
-type Msg = { id: number; sender_id?: string | null; body: string; created_at: string; from_mod?: boolean; sender?: { username: string } | null; reply_to?: number | null; reactions?: Reaction[] };
+export type Reaction = { emoji: string; user_id: string };
+export type Msg = { id: number; sender_id?: string | null; body: string; image_url?: string | null; created_at: string; from_mod?: boolean; sender?: { username: string } | null; reply_to?: number | null; reactions?: Reaction[] };
 
-const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
-const MESSAGE_COLUMNS = "id,sender_id,body,created_at,reply_to,reactions:message_reactions(emoji,user_id)";
+export const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const MESSAGE_COLUMNS = "id,sender_id,body,image_url,created_at,reply_to,reactions:message_reactions(emoji,user_id)";
 const time = (s: string | null) => { const t = s ? Date.parse(s) : NaN; return Number.isNaN(t) ? -Infinity : t; };
 
 /** A message list with a box at the bottom. New messages are fetched every few seconds. */
 /** A message's text, with web links, u/name and n/name (for hubs that exist) clickable. */
-function MessageText({ body, hubs }: { body: string; hubs?: string[] }) {
+export function MessageText({ body, hubs }: { body: string; hubs?: string[] }) {
   const known = new Set((hubs ?? []).map(h => h.toLowerCase()));
   const parts = body.split(/(https?:\/\/[^\s<>"]+|(?:^|(?<=[\s(]))[un]\/[A-Za-z0-9_]{3,21}\b)/g);
   return (
@@ -34,24 +36,35 @@ function MessageText({ body, hubs }: { body: string; hubs?: string[] }) {
   );
 }
 
-export function MessageList({ messages, isMine, label, above, below, menu, hubs }: {
+export function MessageList({ messages, isMine, label, above, below, menu, hubs, corner }: {
   messages: Msg[]; isMine: (m: Msg) => boolean; label?: (m: Msg) => string | null; hubs?: string[];
   above?: (m: Msg) => React.ReactNode; below?: (m: Msg) => React.ReactNode; menu?: (m: Msg) => React.ReactNode;
+  /** Sits on the bubble's bottom corner (reactions). */
+  corner?: (m: Msg) => React.ReactNode;
 }) {
   const list = useRef<HTMLDivElement>(null);
   // Scrolls this list only, so the page and the message box stay where they are.
   useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; }, [messages.length]);
   return (
+    <Lightbox>
     <div ref={list} className="chat-list">
       {messages.map(m => {
         const mine = isMine(m);
         const who = label?.(m);
+        const badge = corner?.(m);
         return (
-          <div key={m.id} className={`chat-row ${mine ? "mine" : ""}`}>
+          <div key={m.id} className={`chat-row ${mine ? "mine" : ""} ${badge ? "has-react" : ""}`}>
             {who && <div className="muted small" style={{ margin: "0 4px 2px", textAlign: mine ? "right" : "left" }}>{who}</div>}
             {above?.(m)}
             <div className="chat-line">
-              <div className="bubble"><MessageText body={m.body} hubs={hubs} /></div>
+              <div className="bubble-wrap">
+                <div className={`bubble ${m.image_url ? "has-pic" : ""}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {m.image_url && <img src={m.image_url} alt="" className="bubble-img" loading="lazy" />}
+                  {m.body && <span className="bubble-text"><MessageText body={m.body} hubs={hubs} /></span>}
+                </div>
+                {badge}
+              </div>
               {menu?.(m)}
             </div>
             {below?.(m)}
@@ -60,13 +73,45 @@ export function MessageList({ messages, isMine, label, above, below, menu, hubs 
         );
       })}
     </div>
+    </Lightbox>
   );
 }
 
-export function Composer({ onSend, placeholder = "Message", top }: { onSend: (text: string) => Promise<string | void>; placeholder?: string; top?: React.ReactNode }) {
+/** Reactions as a small badge on the bubble's corner; tap one to change or take back yours. */
+export function ReactionBadge({ reactions, me, onReact }: { reactions?: Reaction[]; me: string; onReact: (emoji: string) => void }) {
+  const counts = new Map<string, { n: number; mine: boolean }>();
+  for (const r of reactions ?? []) {
+    const c = counts.get(r.emoji) ?? { n: 0, mine: false };
+    counts.set(r.emoji, { n: c.n + 1, mine: c.mine || r.user_id === me });
+  }
+  if (counts.size === 0) return null;
+  return (
+    <div className="chat-reactions">
+      {[...counts].map(([e, c]) => <button key={e} className={c.mine ? "on" : ""} aria-label={`${e} ${c.n}`} onClick={() => onReact(e)}>{e}{c.n > 1 ? c.n : ""}</button>)}
+    </div>
+  );
+}
+
+export function Composer({ onSend, placeholder = "Message", top, onPicture }: {
+  onSend: (text: string) => Promise<string | void>; placeholder?: string; top?: React.ReactNode;
+  /** Sends a picture on its own; without it there's no picture button. */
+  onPicture?: (url: string) => Promise<string | void>;
+}) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  async function picture(file: File | undefined | null) {
+    if (!file || !onPicture || !file.type.startsWith("image/")) return;
+    setBusy(true);
+    try {
+      const problem = await onPicture(await uploadImage(file, "post-images"));
+      setError(problem || null);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   const box = useAutoGrow(text, 180);
   async function send() {
     const t = text.trim();
@@ -82,11 +127,18 @@ export function Composer({ onSend, placeholder = "Message", top }: { onSend: (te
       {top}
       {error && <p className="error" style={{ margin: "0 0 8px" }}>{error}</p>}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {onPicture && (
+          <label className="icon-btn" aria-label="Send a picture" title="Send a picture" style={{ height: 42, cursor: "pointer" }}>
+            <Icon icon={I.imageOutline} size={17} />
+            <input type="file" hidden accept="image/jpeg,image/png,image/webp,image/gif" disabled={busy} onChange={e => { picture(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+        )}
         <textarea
           ref={box}
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          onPaste={e => { const f = onPicture ? [...e.clipboardData.files].find(x => x.type.startsWith("image/")) : null; if (f) { e.preventDefault(); picture(f); } }}
           placeholder={placeholder}
           aria-label={placeholder}
           rows={1}
@@ -100,7 +152,7 @@ export function Composer({ onSend, placeholder = "Message", top }: { onSend: (te
 }
 
 /** A bubble's ⋮ menu: react, reply, and report (theirs) or delete (yours). */
-function BubbleMenu({ mine, onReact, onReply, onReport, onDelete }: { mine: boolean; onReact: (e: string) => void; onReply: () => void; onReport: () => void; onDelete: () => void }) {
+export function BubbleMenu({ mine, onReact, onReply, onReport, onDelete }: { mine: boolean; onReact: (e: string) => void; onReply: () => void; onReport: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState<"down" | "up" | null>(null);
   const box = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -204,25 +256,10 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
         isMine={m => m.sender_id === me}
         above={m => {
           const quoted = m.reply_to ? msgs.find(x => x.id === m.reply_to) : null;
-          return quoted ? <div className="chat-quote">{quoted.body}</div> : null;
+          return quoted ? <div className="chat-quote">{quoted.body || "Picture"}</div> : null;
         }}
-        below={m => {
-          const counts = new Map<string, { n: number; mine: boolean }>();
-          for (const r of m.reactions ?? []) {
-            const c = counts.get(r.emoji) ?? { n: 0, mine: false };
-            counts.set(r.emoji, { n: c.n + 1, mine: c.mine || r.user_id === me });
-          }
-          return (
-            <>
-              {counts.size > 0 && (
-                <div className="chat-reactions">
-                  {[...counts].map(([e, c]) => <button key={e} className={c.mine ? "on" : ""} aria-label={`${e} ${c.n}`} onClick={() => react(m, e)}>{e}{c.n > 1 ? ` ${c.n}` : ""}</button>)}
-                </div>
-              )}
-              {m.id === seenId && <div className="muted small" style={{ margin: "2px 4px 0", textAlign: "right", fontSize: 11 }}>Seen</div>}
-            </>
-          );
-        }}
+        corner={m => <ReactionBadge reactions={m.reactions} me={me} onReact={e => react(m, e)} />}
+        below={m => m.id === seenId ? <div className="muted small" style={{ margin: "2px 4px 0", textAlign: "right", fontSize: 11 }}>Seen</div> : null}
         menu={m => (
           <BubbleMenu
             mine={m.sender_id === me}
@@ -253,6 +290,12 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
           )}
           onSend={async text => {
             const { error } = await sb.from("messages").insert({ conversation_id: id, body: text, reply_to: replying?.id ?? null });
+            if (error) return errorMessage(error);
+            setReplying(null);
+            await reload();
+          }}
+          onPicture={async url => {
+            const { error } = await sb.from("messages").insert({ conversation_id: id, body: "", image_url: url, reply_to: replying?.id ?? null });
             if (error) return errorMessage(error);
             setReplying(null);
             await reload();

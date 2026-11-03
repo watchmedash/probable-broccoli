@@ -9,12 +9,34 @@ import { errorMessage } from "@/lib/errors";
 import { timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
 import { insertComment } from "@/lib/queries";
+import { uploadImage } from "@/lib/upload";
 import { myVote, type Comment } from "@/lib/types";
 import { Avatar } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
 import { AskDialog } from "./Dialogs";
 import { Votes } from "./VoteBar";
+import { Lightbox } from "./Lightbox";
+import { useToast } from "./Toast";
+
+/** Replies this deep link onward instead of squeezing further right. */
+const MAX_DEPTH = 6;
+const SEEN_KEY = "nakodu:seen";
+
+/** When you last opened each post (kept in this browser), so new comments can stand out. */
+function lastVisit(postId: number): number | null {
+  try {
+    const map = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}") as Record<string, number>;
+    const before = map[postId] ?? null;
+    map[postId] = Date.now();
+    // Only the 300 most recent posts are kept.
+    const kept = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 300);
+    localStorage.setItem(SEEN_KEY, JSON.stringify(Object.fromEntries(kept)));
+    return before;
+  } catch {
+    return null;
+  }
+}
 
 type Ctx = {
   signedIn: boolean;
@@ -26,21 +48,43 @@ type Ctx = {
   hubs: string[];
   postId: number;
   canRemove: boolean;
+  hubId: number | null;
+  allowImages: boolean;
+  /** Comments newer than your last visit. */
+  fresh: Set<number>;
   userFlairs: Record<string, { text: string; color: string }>;
   add: (c: Comment) => void;
   replace: (c: Comment) => void;
 };
 
-export function Comments({ postId, initial, signedIn, myId, opId = null, closed, allowedDomains, hubs = [], canRemove = false, blocked = [], userFlairs = {} }: {
+export function Comments({ postId, initial, signedIn, myId, opId = null, closed, allowedDomains, hubs = [], canRemove = false, blocked = [], userFlairs = {}, hubId = null, allowImages = true, focus = null }: {
   postId: number; initial: Comment[]; signedIn: boolean; myId: string | null; opId?: string | null; closed: boolean; allowedDomains: string[];
   hubs?: string[]; canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string }>;
+  hubId?: number | null; allowImages?: boolean;
+  /** A shared comment link: just that comment and its replies. */
+  focus?: number | null;
 }) {
   // Comments from people you blocked are left out, like in the app.
   const [rows, setRows] = useState(() => initial.filter(c => !c.author || !blocked.includes(c.author.id)));
   const [sort, setSort] = useState<CommentSort>("top");
-  const tree = useMemo(() => buildTree(rows, sort), [rows, sort]);
+  const [fresh, setFresh] = useState<Set<number>>(new Set());
+  // Read once when the page opens: what came in since you were last here (not your own).
+  useEffect(() => {
+    const before = lastVisit(postId);
+    if (before) setFresh(new Set(initial.filter(c => Date.parse(c.created_at) > before && c.author?.id !== myId).map(c => c.id)));
+  }, [postId, initial, myId]);
+  const whole = useMemo(() => buildTree(rows, sort), [rows, sort]);
+  const tree = useMemo(() => {
+    if (focus == null) return whole;
+    const find = (list: CommentNode[]): CommentNode | null => {
+      for (const n of list) { if (n.comment.id === focus) return n; const f = find(n.children); if (f) return f; }
+      return null;
+    };
+    const hit = find(whole);
+    return hit ? [hit] : whole;
+  }, [whole, focus]);
   const ctx: Ctx = {
-    signedIn, myId, opId, closed, allowedDomains, hubs, postId, canRemove, userFlairs,
+    signedIn, myId, opId, closed, allowedDomains, hubs, postId, canRemove, userFlairs, hubId, allowImages, fresh,
     add: c => setRows(r => [...r, c]),
     replace: c => setRows(r => r.map(x => (x.id === c.id ? c : x))),
   };
@@ -56,8 +100,16 @@ export function Comments({ postId, initial, signedIn, myId, opId = null, closed,
           <button key={s} className={sort === s ? "on" : ""} onClick={() => setSort(s)}>{s[0].toUpperCase() + s.slice(1)}</button>
         ))}
       </nav>
+      {focus != null && tree !== whole && (
+        <p className="small" style={{ margin: "8px 0" }}>
+          <span className="muted">One comment thread. </span>
+          <Link href={`/p/${postId}#comments`} className="linkish">See all comments</Link>
+        </p>
+      )}
       {tree.length === 0 ? <p className="muted" style={{ padding: "16px 0" }}>No comments yet.</p> : (
-        <div className="thread">{tree.map(n => <CommentItem key={n.comment.id} node={n} top ctx={ctx} />)}</div>
+        <Lightbox>
+          <div className="thread">{tree.map(n => <CommentItem key={n.comment.id} node={n} top depth={0} ctx={ctx} />)}</div>
+        </Lightbox>
       )}
     </section>
   );
@@ -70,6 +122,22 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(!!onDone);
+  const [uploading, setUploading] = useState(false);
+  // A picture or GIF goes in on its own line, where it shows in the comment.
+  async function addPicture(file: File | undefined | null) {
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadImage(file, "post-images");
+      setText(t => `${t.trimEnd()}${t.trim() ? "\n\n" : ""}![](${url})\n`);
+      setFocused(true);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setUploading(false);
+    }
+  }
   const box = useAutoGrow(text, 420);
   const router = useRouter();
   if (!ctx.signedIn) {
@@ -116,14 +184,22 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
         onFocus={() => setFocused(true)}
         onChange={e => setText(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send(); }}
+        onPaste={e => { const f = ctx.allowImages ? [...e.clipboardData.files].find(x => x.type.startsWith("image/")) : null; if (f) { e.preventDefault(); addPicture(f); } }}
         aria-label={placeholder}
         autoFocus={!!onDone}
       />
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       {focused && (
         <div className="row">
+          {ctx.allowImages && (
+            <label className="icon-btn" aria-label="Add a picture or GIF" title="Add a picture or GIF" style={{ marginRight: "auto", cursor: "pointer" }}>
+              <Icon icon={I.imageOutline} size={16} />
+              <input type="file" hidden accept="image/jpeg,image/png,image/webp,image/gif" disabled={uploading} onChange={e => { addPicture(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+          )}
+          {uploading && <span className="muted small" style={{ alignSelf: "center" }}>Uploading...</span>}
           <button className="icon-btn" aria-label="Cancel" onClick={() => { setText(initial); setFocused(false); onDone?.(); }}><Icon icon={I.close} size={15} /></button>
-          <button className="btn" aria-label={editId ? "Save" : parentId ? "Reply" : "Comment"} style={{ width: 46, padding: 0 }} disabled={!text.trim() || busy} onClick={send}><Icon icon={editId ? I.check : I.send} size={15} /></button>
+          <button className="btn" aria-label={editId ? "Save" : parentId ? "Reply" : "Comment"} style={{ width: 46, padding: 0 }} disabled={!text.trim() || busy || uploading} onClick={send}><Icon icon={editId ? I.check : I.send} size={15} /></button>
         </div>
       )}
     </div>
@@ -131,8 +207,8 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
 }
 
 /** A comment's ⋮ menu: edit and delete your own, report other people's, and remove for mods. */
-function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, onRemove }: {
-  mine: boolean; signedIn: boolean; canRemove: boolean; onEdit: () => void; onDelete: () => void; onReport: () => void; onRemove: () => void;
+function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, onRemove, onShare }: {
+  mine: boolean; signedIn: boolean; canRemove: boolean; onEdit: () => void; onDelete: () => void; onReport: () => void; onRemove: () => void; onShare: () => void;
 }) {
   const [open, setOpen] = useState<"down" | "up" | null>(null);
   const box = useRef<HTMLSpanElement>(null);
@@ -142,7 +218,6 @@ function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, on
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
-  if (!signedIn) return null;
   const run = (fn: () => void) => () => { setOpen(null); fn(); };
   return (
     <span ref={box} style={{ position: "relative" }}>
@@ -151,7 +226,8 @@ function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, on
       </button>
       {open && (
         <div className="menu" style={{ left: 0, right: "auto", top: open === "down" ? 36 : "auto", bottom: open === "up" ? 36 : "auto" }}>
-          {mine ? (
+          <button onClick={run(onShare)}><Icon icon={I.share} size={14} /> Share</button>
+          {!signedIn ? null : mine ? (
             <>
               <button onClick={run(onEdit)}><Icon icon={I.edit} size={14} /> Edit</button>
               <button onClick={run(onDelete)} style={{ color: "var(--error)" }}><Icon icon={I.trash} size={14} /> Delete</button>
@@ -171,8 +247,16 @@ function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, on
  * The minus, or tapping the name row, folds the comment and its replies down to a plus, the name and
  * the time. A comment without replies doesn't fold.
  */
-function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: boolean; ctx: Ctx }) {
+function CommentItem({ node, top = false, depth, ctx }: { node: CommentNode; top?: boolean; depth: number; ctx: Ctx }) {
   const c = node.comment;
+  const toast = useToast();
+  async function share() {
+    const url = `${location.origin}/p/${ctx.postId}?c=${c.id}`;
+    try {
+      if (navigator.share) await navigator.share({ url });
+      else { await navigator.clipboard.writeText(url); toast("Link copied"); }
+    } catch {}
+  }
   const [collapsed, setCollapsed] = useState(false);
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -207,7 +291,7 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
             ) : c.deleted ? (
               <p className="c-body c-deleted">[deleted]</p>
             ) : (
-              <div className="c-body"><div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body, { allowedDomains: ctx.allowedDomains, hubs: ctx.hubs }) }} /></div>
+              <div className={`c-body ${ctx.fresh.has(c.id) ? "c-new-body" : ""}`}><div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body, { allowedDomains: ctx.allowedDomains, hubs: ctx.hubs }) }} /></div>
             )}
             <div className="actions c-actions">
               {kids > 0 && <button className="c-toggle" onClick={() => setCollapsed(true)} aria-label="Fold this thread">-</button>}
@@ -223,14 +307,19 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
                     onDelete={() => setDialog("delete")}
                     onReport={() => setDialog("report")}
                     onRemove={() => setDialog("remove")}
+                    onShare={share}
                   />
                 </>
               )}
             </div>
             {replying && <Composer ctx={ctx} parentId={c.id} placeholder={`Reply to u/${c.author?.username ?? "deleted"}`} onDone={() => setReplying(false)} />}
           </div>
-          {kids > 0 && (
-            <div className="c-children">{node.children.map(k => <CommentItem key={k.comment.id} node={k} ctx={ctx} />)}</div>
+          {kids > 0 && depth + 1 >= MAX_DEPTH ? (
+            <div className="c-children">
+              <Link href={`/p/${ctx.postId}?c=${c.id}#comments`} className="linkish small" style={{ display: "inline-block", padding: "10px 0" }}>Continue this thread</Link>
+            </div>
+          ) : kids > 0 && (
+            <div className="c-children">{node.children.map(k => <CommentItem key={k.comment.id} node={k} depth={depth + 1} ctx={ctx} />)}</div>
           )}
         </div>
       )}
@@ -244,6 +333,7 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
           placeholder="Reason (optional)"
           action="Remove"
           danger
+          reasonsFor={ctx.hubId}
           onClose={() => setDialog(null)}
           onConfirm={async reason => {
             const { error } = await browserSupabase().rpc("remove_comment", { comment: c.id, reason: reason || null });

@@ -15,10 +15,11 @@ import { AskDialog } from "./Dialogs";
 import { Icon, I } from "./Icon";
 import { useToast } from "./Toast";
 import { ImageCropper } from "./ImageCropper";
+import { CategoryPicker } from "./CategoryPicker";
 
 // Colours a hub can pick, as in the app. Blues first; never orange.
 const COLORS = ["#2563EB", "#0EA5E9", "#4F46E5", "#7C3AED", "#0D9488", "#10B981", "#EC4899", "#64748B", "#B91C1C", "#F59E0B", "#8B5CF6"];
-type Tab = "general" | "posting" | "automod" | "prefixes" | "mods" | "members" | "reports" | "mail" | "log";
+type Tab = "general" | "posting" | "automod" | "prefixes" | "mods" | "members" | "queue" | "reports" | "reasons" | "notes" | "mail" | "log";
 type Person = { id: string; username: string; avatar_url: string | null };
 const lines = (s: string) => s.split(/[\n,]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
 
@@ -30,7 +31,10 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
     ["prefixes", "Prefixes", access.canSettings],
     ["mods", "Mods", access.isOwner],
     ["members", "Members", access.canMembers],
+    ["queue", "Queue", access.canRemove],
     ["reports", "Reports", access.canRemove],
+    ["reasons", "Removal reasons", access.canRemove],
+    ["notes", "Notes", access.isStaff],
     ["mail", "Mail", access.isStaff],
     ["log", "Mod log", access.isStaff],
   ];
@@ -49,7 +53,10 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
         {tab === "prefixes" && <Prefixes hubId={hub.id} />}
         {tab === "mods" && <Mods hubId={hub.id} />}
         {tab === "members" && <Members hubId={hub.id} isPrivate={hub.privacy === "private"} userFlair={!!hub.allow_user_flair} />}
+        {tab === "queue" && <Queue hubId={hub.id} />}
         {tab === "reports" && <Reports hubId={hub.id} />}
+        {tab === "reasons" && <Reasons hubId={hub.id} />}
+        {tab === "notes" && <Notes hubId={hub.id} />}
         {tab === "mail" && <Mail hubId={hub.id} />}
         {tab === "log" && <Log hubId={hub.id} />}
       </div>
@@ -86,6 +93,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
     automod_domains: (hub.automod_domains ?? []).join("\n"), automod_min_days: hub.automod_min_days ?? 0,
     filter_swearing: hub.filter_swearing ?? false, automod_min_sparks: hub.automod_min_sparks ?? 0,
     posts_per_hour: hub.posts_per_hour == null ? "" : String(hub.posts_per_hour),
+    categories: hub.categories ?? [], require_approval: hub.require_approval ?? false, allow_comment_images: hub.allow_comment_images ?? true,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +104,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
   const [crop, setCrop] = useState<{ file: File; key: "icon_url" | "banner_url" } | null>(null);
   const upload = (file: File | undefined, key: "icon_url" | "banner_url") => { if (file) setCrop({ file, key }); };
   async function save() {
+    if (s.categories.length === 0) return setError("Pick at least one category.");
     setBusy(true);
     setError(null);
     const { error } = await browserSupabase().from("communities").update({
@@ -140,6 +149,10 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
             <label className="btn quiet">{s.banner_url ? "Change cover" : "Add a cover"}<input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => { upload(e.target.files?.[0], "banner_url"); e.target.value = ""; }} /></label>
             {s.banner_url && <button className="linkish small" onClick={() => set("banner_url", null)}>Remove cover</button>}
           </div>
+          <div className="field">
+            <label>Categories (1 to 3)</label>
+            <CategoryPicker value={s.categories} onChange={v => set("categories", v)} max={3} />
+          </div>
           <div className="field"><label htmlFor="rules">Rules (one per line, shown as you write them)</label><textarea id="rules" value={s.rules} maxLength={2000} onChange={e => set("rules", e.target.value)} /></div>
           <Choice label="Who can see and join" value={s.privacy} options={[["public", "Public: anyone can join"], ["private", "Private: people ask to join"]]} onChange={v => set("privacy", v)} />
           <Toggle label="Only members see posts" on={s.members_only} onChange={v => set("members_only", v)} />
@@ -153,6 +166,8 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <Choice label="Who can post" value={s.who_can_post} options={[["everyone", "Everyone"], ["members", "Members"], ["mods", "Mods only"]]} onChange={v => set("who_can_post", v)} />
           <Choice label="Who can comment" value={s.who_can_comment} options={[["everyone", "Everyone"], ["members", "Members"]]} onChange={v => set("who_can_comment", v)} />
           <Toggle label="Pictures in posts" on={s.allow_images} onChange={v => set("allow_images", v)} />
+          <Toggle label="Pictures and GIFs in comments" on={s.allow_comment_images} onChange={v => set("allow_comment_images", v)} />
+          <Toggle label="Approve posts first" help="Posts from anyone but the mods wait in the Queue until a mod approves them." on={s.require_approval} onChange={v => set("require_approval", v)} />
           <Toggle label="Polls" on={s.allow_polls} onChange={v => set("allow_polls", v)} />
           <Toggle label="Crossposts" help="Posts here can be shared to other hubs." on={s.allow_crossposts} onChange={v => set("allow_crossposts", v)} />
           <Toggle label="Every post needs a prefix" on={s.flair_required} onChange={v => set("flair_required", v)} />
@@ -430,6 +445,110 @@ function Mail({ hubId }: { hubId: number }) {
           <span style={{ flex: 1 }}><b style={{ display: "block" }}>{t.subject}</b><span className="muted small">u/{t.user?.username ?? "deleted"}{t.closed ? "   Closed" : ""}</span></span>
           <span className="muted small">{timeAgo(t.last_message_at)}</span>
         </Link>
+      ))}
+    </>
+  );
+}
+
+/** Posts waiting for approval, oldest first. */
+function Queue({ hubId }: { hubId: number }) {
+  const sb = browserSupabase();
+  const toast = useToast();
+  type Held = { id: number; title: string; body: string; created_at: string; author: Person | null };
+  const [items, reload] = useList<Held>(useCallback(() => sb.from("posts").select("id,title,body,created_at,author:profiles!author_id(id,username,avatar_url)").eq("community_id", hubId).eq("held", true).order("created_at"), [hubId, sb]));
+  const [removing, setRemoving] = useState<number | null>(null);
+  if (items?.length === 0) return <p className="muted">Nothing waiting.</p>;
+  return (
+    <>
+      {items?.map(p => (
+        <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+          <span className="meta"><Avatar user={p.author} size={20} /><b>u/{p.author?.username ?? "deleted"}</b><span>{timeAgo(p.created_at)}</span></span>
+          <Link href={`/p/${p.id}`} style={{ fontWeight: 600 }}>{p.title}</Link>
+          {p.body && <span className="muted small" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.body}</span>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn" onClick={async () => { const { error } = await sb.rpc("approve_post", { post: p.id }); if (error) toast(errorMessage(error)); reload(); }}><Icon icon={I.check} size={13} /> Approve</button>
+            <button className="btn quiet" onClick={() => setRemoving(p.id)}>Remove</button>
+          </div>
+        </div>
+      ))}
+      {removing != null && (
+        <AskDialog
+          title="Remove this post?"
+          text="The author is told, with your reason if you give one. It goes in the mod log."
+          field
+          placeholder="Reason (optional)"
+          action="Remove"
+          danger
+          reasonsFor={hubId}
+          onClose={() => setRemoving(null)}
+          onConfirm={async reason => {
+            const { error } = await sb.rpc("remove_post", { post: removing, reason: reason || null });
+            if (error) return errorMessage(error);
+            reload();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** Ready-made reasons, picked when removing a post or comment. */
+function Reasons({ hubId }: { hubId: number }) {
+  const sb = browserSupabase();
+  const [items, reload] = useList<{ id: number; title: string; body: string }>(useCallback(() => sb.from("hub_removal_reasons").select("id,title,body").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const input = { height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" } as const;
+  return (
+    <>
+      {items?.length === 0 && <p className="muted">No saved reasons yet.</p>}
+      {items?.map(r => (
+        <Row key={r.id}>
+          <span style={{ flex: 1 }}><b>{r.title}</b>{r.body && <span className="muted small" style={{ display: "block" }}>{r.body}</span>}</span>
+          <button className="linkish small" onClick={async () => { await sb.from("hub_removal_reasons").delete().eq("id", r.id); reload(); }}>Delete</button>
+        </Row>
+      ))}
+      <input aria-label="Reason" placeholder="Reason, like Off topic" value={title} maxLength={60} onChange={e => setTitle(e.target.value)} style={input} />
+      <textarea aria-label="What the author is told (optional)" placeholder="What the author is told (optional)" value={body} maxLength={300} onChange={e => setBody(e.target.value)} style={{ minHeight: 70, padding: "8px 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" }} />
+      {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
+      <button className="btn" style={{ alignSelf: "flex-start" }} disabled={!title.trim()} onClick={async () => {
+        const { error } = await sb.from("hub_removal_reasons").insert({ hub_id: hubId, title: title.trim(), body: body.trim() });
+        if (error) return setError(errorMessage(error));
+        setTitle(""); setBody(""); setError(null); reload();
+      }}>Add reason</button>
+    </>
+  );
+}
+
+/** Private notes about people, seen only by this hub's mods. */
+function Notes({ hubId }: { hubId: number }) {
+  const sb = browserSupabase();
+  type Note = { id: number; note: string; created_at: string; user: Person | null; author: { username: string } | null };
+  const [items, reload] = useList<Note>(useCallback(() => sb.from("hub_user_notes").select("id,note,created_at,user:profiles!user_id(id,username,avatar_url),author:profiles!author_id(username)").eq("hub_id", hubId).order("created_at", { ascending: false }).limit(300), [hubId, sb]));
+  return (
+    <>
+      <p className="muted small" style={{ margin: 0 }}>Only this hub&apos;s mods see these.</p>
+      <AddByName label="Username" action="Add note" extra="Note" onAdd={async (name, note) => {
+        if (!note) return "Write the note first.";
+        const id = await userId(name);
+        if (!id) return `There's no u/${name}`;
+        const { data: me } = await sb.auth.getUser();
+        const { error } = await sb.from("hub_user_notes").insert({ hub_id: hubId, user_id: id, note, author_id: me.user?.id });
+        if (error) return errorMessage(error);
+        reload();
+      }} />
+      {items?.length === 0 && <p className="muted">No notes yet.</p>}
+      {items?.map(n => (
+        <Row key={n.id}>
+          <Avatar user={n.user} size={28} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b>u/{n.user?.username ?? "deleted"}</b>
+            <span style={{ display: "block", whiteSpace: "pre-wrap" }}>{n.note}</span>
+            <span className="muted small">{n.author ? `u/${n.author.username}` : "A mod"}   {timeAgo(n.created_at)}</span>
+          </span>
+          <button className="linkish small" onClick={async () => { await sb.from("hub_user_notes").delete().eq("id", n.id); reload(); }}>Delete</button>
+        </Row>
       ))}
     </>
   );

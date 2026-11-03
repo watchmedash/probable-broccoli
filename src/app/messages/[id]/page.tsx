@@ -21,7 +21,7 @@ export default async function ChatPage({ params }: { params: Promise<{ id: strin
   const v = chatView(c, me.id);
   // The newest 500, oldest first, with reactions in a steady order so the page can tell when they change.
   const [{ data: newest }, hubs] = await Promise.all([
-    sb.from("messages").select("id,sender_id,body,created_at,reply_to,reactions:message_reactions(emoji,user_id)").eq("conversation_id", id).gt("created_at", v.hiddenAt ?? "-infinity").order("created_at", { ascending: false }).order("emoji", { referencedTable: "reactions" }).limit(500),
+    sb.from("messages").select("id,sender_id,body,image_url,created_at,reply_to,reactions:message_reactions(emoji,user_id)").eq("conversation_id", id).gt("created_at", v.hiddenAt ?? "-infinity").order("created_at", { ascending: false }).order("emoji", { referencedTable: "reactions" }).limit(500),
     hubNames(sb),
   ]);
   const msgs = [...(newest ?? [])].reverse();

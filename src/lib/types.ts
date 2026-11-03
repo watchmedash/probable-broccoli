@@ -37,6 +37,11 @@ export type Hub = {
   allow_user_flair?: boolean;
   /** 18+ hubs only: keep the swearing filter on anyway. */
   filter_swearing?: boolean;
+  /** Up to three category slugs (lib/categories). */
+  categories?: string[];
+  /** Posts from anyone but the staff wait for a mod. */
+  require_approval?: boolean;
+  allow_comment_images?: boolean;
 };
 
 export type PollOption = { id: number; position: number; label: string; votes: number };
@@ -57,7 +62,9 @@ export type Post = {
   locked: boolean;
   spoiler: boolean;
   mature: boolean;
-  community: (Pick<Hub, "id" | "name" | "color" | "icon_url" | "is_mature" | "link_domains" | "status" | "who_can_comment" | "created_by" | "privacy" | "who_can_post"> & { allow_crossposts?: boolean; allow_user_flair?: boolean }) | null;
+  /** Waiting for a mod to approve it. */
+  held?: boolean;
+  community: (Pick<Hub, "id" | "name" | "color" | "icon_url" | "is_mature" | "link_domains" | "status" | "who_can_comment" | "created_by" | "privacy" | "who_can_post"> & { allow_crossposts?: boolean; allow_user_flair?: boolean; allow_comment_images?: boolean }) | null;
   author: Pick<Profile, "id" | "username" | "avatar_url"> | null;
   poll: PollOption[] | null;
   flair: Flair | null;

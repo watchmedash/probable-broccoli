@@ -6,6 +6,7 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { LeftNav } from "@/components/LeftNav";
 import { CollapseButton } from "@/components/NavParts";
+import { Spoilers } from "@/components/Spoilers";
 import { ToastProvider } from "@/components/Toast";
 import { ADSENSE_CLIENT, SITE_URL } from "@/lib/config";
 
@@ -37,6 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={roboto.variable} data-theme={theme}>
       <body>
+        <Spoilers />
         <ToastProvider>
           {android && (
             <div className="app-bar">

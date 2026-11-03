@@ -11,6 +11,7 @@ import { Icon, I } from "@/components/Icon";
 import { SelfFlair } from "@/components/SelfFlair";
 import { SortTabs } from "@/components/SortTabs";
 import { countLabel, SHOW_MEMBERS_FROM } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 import { fetchHubByName, fetchPosts, fetchViewer, parseRange, parseSort, blockedIds, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
@@ -96,6 +97,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
         <section className="panel panel-pad">
           <h2>About</h2>
           <p style={{ margin: "0 0 10px" }}>{hub.description || "No description yet."}</p>
+          {!!hub.categories?.length && <p className="muted small" style={{ margin: "0 0 10px" }}>{hub.categories.map(categoryLabel).join(", ")}</p>}
           {hub.member_count >= SHOW_MEMBERS_FROM && <p className="muted small" style={{ margin: "0 0 12px" }}>{countLabel(hub.member_count, "member")}</p>}
           <Link href={`/n/${hub.name}/message-mods`} className="btn quiet block"><Icon icon={I.mail} size={14} /> Message mods</Link>
           {me && joined && hub.allow_user_flair && <div style={{ marginTop: 8 }}><SelfFlair hubId={hub.id} me={me} current={myFlair} /></div>}

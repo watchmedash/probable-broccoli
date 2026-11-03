@@ -48,6 +48,38 @@ md.renderer.rules.link_close = (tokens, i, opts, env, self) => {
   }
   return defaultClose(tokens, i, opts, env, self);
 };
+// >!text!< is a spoiler. The markers are swapped for private characters first, so a line that
+// starts with one isn't read as a quote.
+const OPEN = "\uE000", CLOSE = "\uE001";
+md.core.ruler.after("inline", "spoiler", state => {
+  for (const block of state.tokens) {
+    if (block.type !== "inline" || !block.children) continue;
+    const out: typeof block.children = [];
+    for (const t of block.children) {
+      if (t.type !== "text" || !/[]/.test(t.content)) { out.push(t); continue; }
+      for (const piece of t.content.split(/([])/)) {
+        if (piece === OPEN) {
+          const open = new state.Token("spoiler_open", "span", 1);
+          open.attrSet("class", "md-spoiler");
+          out.push(open);
+        } else if (piece === CLOSE) out.push(new state.Token("spoiler_close", "span", -1));
+        else if (piece) {
+          const text = new state.Token("text", "", 0);
+          text.content = piece;
+          out.push(text);
+        }
+      }
+    }
+    block.children = out;
+  }
+});
+function markSpoilers(src: string): string {
+  return src
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+    .map((part, i) => (i % 2 ? part : part.replace(/>!(?=\S)([^\n]*?\S)!</g, `${OPEN}$1${CLOSE}`)))
+    .join("");
+}
+
 // Pictures in text get lazy loading.
 const defaultImage = md.renderer.rules.image!;
 md.renderer.rules.image = (tokens, i, opts, env: Env, self) => {
@@ -76,11 +108,11 @@ export function linkMentions(src: string, hubs?: Iterable<string>): string {
 }
 
 export function renderMarkdown(src: string, opts: { allowedDomains?: string[]; hubs?: Iterable<string> } = {}): string {
-  return md.render(linkMentions(src ?? "", opts.hubs), { allowedDomains: opts.allowedDomains } satisfies Env);
+  return md.render(markSpoilers(linkMentions(src ?? "", opts.hubs)), { allowedDomains: opts.allowedDomains } satisfies Env);
 }
 
 /** A feed card's text: formatted like the post, without links or pictures, cut short. */
 export function renderPreview(src: string, max = 700): string {
   const text = (src ?? "").length > max ? src.slice(0, max).replace(/\S*$/, "") + "…" : src ?? "";
-  return md.render(text, { preview: true } satisfies Env);
+  return md.render(markSpoilers(text), { preview: true } satisfies Env);
 }

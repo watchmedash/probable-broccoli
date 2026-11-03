@@ -3,11 +3,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
+import { CategoryPicker } from "./CategoryPicker";
 const NAME = /^[A-Za-z0-9_]{3,21}$/;
 
 export function CreateHub() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -23,14 +25,19 @@ export function CreateHub() {
         <label htmlFor="desc">What&apos;s it about? (optional)</label>
         <textarea id="desc" value={description} maxLength={300} onChange={e => setDescription(e.target.value)} style={{ minHeight: 80 }} />
       </div>
+      <div className="field">
+        <label>Categories (1 to 3)</label>
+        <CategoryPicker value={categories} onChange={v => { setCategories(v); setError(null); }} max={3} />
+      </div>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       <button
         className="btn block"
         disabled={busy}
         onClick={async () => {
           if (!NAME.test(name)) return setError("Hub names are 3 to 21 letters, numbers or _");
+          if (categories.length === 0) return setError("Pick at least one category");
           setBusy(true);
-          const { data, error } = await browserSupabase().from("communities").insert({ name, description: description.trim() }).select("name").single();
+          const { data, error } = await browserSupabase().from("communities").insert({ name, description: description.trim(), categories }).select("name").single();
           setBusy(false);
           if (error) return setError(error.code === "23505" ? "That name is taken" : errorMessage(error));
           router.push(`/n/${data.name}`);

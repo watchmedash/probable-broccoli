@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { Avatar } from "./Avatars";
+import { CategoryPicker } from "./CategoryPicker";
 import { useToast } from "./Toast";
 
 type S = {
@@ -81,6 +82,7 @@ export function AccountSettings() {
         />
         <Link href="/settings/blocked" className="linkish">Blocked people</Link>
       </Section>
+      <Interests />
       {askBirthday && (
         <div className="dialog-back" onClick={() => setAskBirthday(false)}>
           <div className="dialog" role="dialog" aria-modal onClick={e => e.stopPropagation()}>
@@ -99,6 +101,34 @@ export function AccountSettings() {
         </div>
       )}
     </>
+  );
+}
+
+/** The categories you're into. Hubs in them come up more in your home feed. At least three stay picked. */
+function Interests() {
+  const sb = browserSupabase();
+  const toast = useToast();
+  const [picked, setPicked] = useState<string[] | null>(null);
+  useEffect(() => {
+    sb.from("user_interests").select("category").then(({ data }) => setPicked((data ?? []).map((r: { category: string }) => r.category)));
+  }, [sb]);
+  if (!picked) return null;
+  async function change(next: string[]) {
+    if (next.length < picked!.length && next.length < 3) return toast("Keep at least 3.");
+    const before = picked!;
+    setPicked(next);
+    const added = next.filter(c => !before.includes(c));
+    const removed = before.filter(c => !next.includes(c));
+    const { error } = added.length
+      ? await sb.from("user_interests").insert(added.map(category => ({ category })))
+      : await sb.from("user_interests").delete().in("category", removed);
+    if (error) { setPicked(before); toast(errorMessage(error)); }
+  }
+  return (
+    <Section title="Interests">
+      <span className="muted small">Hubs about these come up more in your home feed.</span>
+      <CategoryPicker value={picked} onChange={change} />
+    </Section>
   );
 }
 

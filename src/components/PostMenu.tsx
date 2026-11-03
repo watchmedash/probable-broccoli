@@ -99,6 +99,7 @@ export function PostMenu(p: PostMenuProps) {
           placeholder="Reason (optional)"
           action="Remove"
           danger
+          reasonsFor={p.hubId}
           onClose={() => setDialog(null)}
           onConfirm={async reason => {
             const { error } = await sb().rpc("remove_post", { post: p.postId, reason: reason || null });

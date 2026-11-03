@@ -12,6 +12,12 @@ describe("shuffleHot", () => {
   const post = (id: number, score = 0, comment_count = 0, created_at = "2026-11-02T11:00:00Z") => ({ id, score, comment_count, created_at });
   const seeded = (seed: number) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
+  it("lifts posts from hubs in your interests", () => {
+    const random = seeded(5);
+    let first = 0;
+    for (let i = 0; i < 300; i++) if (shuffleHot([{ ...post(1), community_id: 9 }, { ...post(2), community_id: 4 }], now, random, new Set([9]))[0] === 1) first++;
+    expect(first).toBeGreaterThan(195);
+  });
   it("keeps every post exactly once", () => {
     const posts = [post(1), post(2), post(3), post(4)];
     expect(shuffleHot(posts, now, seeded(7)).sort()).toEqual([1, 2, 3, 4]);
@@ -84,6 +90,12 @@ describe("comment tree", () => {
 describe("markdown", () => {
   it("escapes raw html", () => {
     expect(renderMarkdown("<script>alert(1)</script>")).not.toContain("<script>");
+  });
+  it("hides >!spoilers!< until clicked, even at the start of a line", () => {
+    expect(renderMarkdown("the end: >!he was a ghost!<")).toContain('<span class="md-spoiler">he was a ghost</span>');
+    expect(renderMarkdown(">!all of it!<")).not.toContain("<blockquote>");
+    expect(renderMarkdown("`>!code!<`")).not.toContain("md-spoiler");
+    expect(renderPreview("x >!y!<")).toContain("md-spoiler");
   });
   it("only links hubs that exist", () => {
     expect(renderMarkdown("try n/nowhere", { hubs: ["general"] })).not.toContain("href");

@@ -1,12 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { browserSupabase } from "@/lib/supabase/client";
 
-/** A small dialog: title, optional text field, and Cancel plus one action. */
-export function AskDialog({ title, text, field, placeholder, action, danger, onClose, onConfirm }: {
+/** A small dialog: title, optional text field, and Cancel plus one action. With [reasonsFor] (a hub), its saved removal reasons fill the field. */
+export function AskDialog({ title, text, field, placeholder, action, danger, onClose, onConfirm, reasonsFor }: {
   title: string; text?: string; field?: boolean; placeholder?: string; action: string; danger?: boolean;
-  onClose: () => void; onConfirm: (value: string) => Promise<string | void> | string | void;
+  onClose: () => void; onConfirm: (value: string) => Promise<string | void> | string | void; reasonsFor?: number | null;
 }) {
   const [value, setValue] = useState("");
+  const [reasons, setReasons] = useState<{ id: number; title: string; body: string }[]>([]);
+  useEffect(() => {
+    if (!reasonsFor) return;
+    browserSupabase().from("hub_removal_reasons").select("id,title,body").eq("hub_id", reasonsFor).order("created_at")
+      .then(({ data }) => setReasons(data ?? []));
+  }, [reasonsFor]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -14,6 +21,12 @@ export function AskDialog({ title, text, field, placeholder, action, danger, onC
       <div className="dialog" role="dialog" aria-modal aria-label={title} onClick={e => e.stopPropagation()}>
         <h2>{title}</h2>
         {text && <p style={{ margin: 0 }}>{text}</p>}
+        {field && reasons.length > 0 && (
+          <select aria-label="Saved reasons" defaultValue="" onChange={e => { const r = reasons.find(x => String(x.id) === e.target.value); if (r) setValue(r.body ? `${r.title}: ${r.body}` : r.title); }} style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" }}>
+            <option value="" disabled>Pick a saved reason</option>
+            {reasons.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
+          </select>
+        )}
         {field && (
           <div className="field">
             <textarea value={value} onChange={e => setValue(e.target.value)} placeholder={placeholder} maxLength={500} style={{ minHeight: 80 }} autoFocus />
