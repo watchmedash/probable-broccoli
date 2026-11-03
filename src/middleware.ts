@@ -4,6 +4,13 @@ import { SUPABASE_KEY, SUPABASE_URL } from "./lib/config";
 
 // Keeps the login fresh: an expired access token is swapped for a new one before the page renders.
 export async function middleware(request: NextRequest) {
+  // Google sign-in that came back to a page instead of the callback: finish it there.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && request.nextUrl.pathname !== "/auth/callback") {
+    const to = new URL("/auth/callback", request.url);
+    to.searchParams.set("code", code);
+    return NextResponse.redirect(to);
+  }
   let response = NextResponse.next({ request });
   const sb = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
