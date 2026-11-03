@@ -29,10 +29,7 @@ function Username({ value, onChange }: { value: string; onChange: (v: string) =>
   return (
     <div className="field">
       <label htmlFor="username">Username</label>
-      <div className="prefix">
-        <span>u/</span>
-        <input id="username" value={value} onChange={e => onChange(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} style={{ height: 42 }} />
-      </div>
+      <input id="username" value={value} onChange={e => onChange(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} />
     </div>
   );
 }
