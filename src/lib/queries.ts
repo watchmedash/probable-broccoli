@@ -192,6 +192,12 @@ export async function myHubIds(sb: SupabaseClient, uid: string): Promise<number[
   return (data ?? []).map((r: { hub_id: number }) => r.hub_id);
 }
 
+/** Hubs you starred, newest first. */
+export async function favoriteHubIds(sb: SupabaseClient, uid: string): Promise<number[]> {
+  const { data } = await sb.from("hub_favorites").select("hub_id").eq("user_id", uid).order("created_at", { ascending: false });
+  return (data ?? []).map((r: { hub_id: number }) => r.hub_id);
+}
+
 export async function followingIds(sb: SupabaseClient, uid: string): Promise<string[]> {
   const { data } = await sb.from("follows").select("followee_id").eq("follower_id", uid);
   return (data ?? []).map((r: { followee_id: string }) => r.followee_id);

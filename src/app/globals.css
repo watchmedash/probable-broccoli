@@ -93,6 +93,15 @@ img { max-width: 100%; }
 .nav-title { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); padding: 10px 12px 6px; }
 .nav-link { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius); color: var(--ink); font-size: 15px; }
 .nav-link:hover { background: var(--surface-2); }
+/* A hub in the menu with its star at the end: always shown when starred, on hover otherwise. */
+.nav-row { position: relative; }
+.nav-row .nav-link { padding-right: 40px; }
+.fav-star { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--muted); cursor: pointer; border-radius: var(--radius); opacity: 0; }
+.nav-row:hover .fav-star, .fav-star:focus-visible, .fav-star.on { opacity: 1; }
+.fav-star.on { color: var(--blue); }
+@media (hover: none) { .fav-star { opacity: 1; } }
+.hub-fav { display: inline-flex; align-items: center; justify-content: center; }
+.hub-fav.on { color: var(--blue); }
 .nav-link.on { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
 .nav-icon { width: 24px; display: inline-flex; justify-content: center; color: inherit; }
 .nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -269,7 +278,7 @@ img { max-width: 100%; }
 .c-actions { position: relative; margin-left: -8px !important; }
 .c-toggle { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--outline); background: var(--surface); color: var(--muted); font-size: 14px; font-weight: 700; line-height: 1; padding: 0 0 1px; cursor: pointer; }
 .c-actions > .c-toggle { position: absolute; left: calc(var(--indent) * -1 - 9px + var(--line-w) / 2 + 8px - var(--line-w)); top: 50%; transform: translateY(-50%); z-index: 1; }
-.c-toggle.inline { position: static; transform: none; }
+.c-plus { display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 760px) { .thread { --indent: 16px; } }
 .c-body { margin: 4px 0 0; font-size: 15px; }
 .c-body .md { font-size: 15px; }

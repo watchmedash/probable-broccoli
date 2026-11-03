@@ -167,13 +167,13 @@ function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, on
 }
 
 /**
- * One comment, Reddit style: a line runs from its avatar down to its replies, with a circled minus
- * on the line to fold them away. Tapping the name row folds the whole comment to its name and a plus.
+ * One comment. A line runs from its avatar down to its replies, with a circled minus on the line.
+ * The minus, or tapping the name row, folds the comment and its replies down to a plus, the name and
+ * the time. A comment without replies doesn't fold.
  */
 function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: boolean; ctx: Ctx }) {
   const c = node.comment;
   const [collapsed, setCollapsed] = useState(false);
-  const [repliesHidden, setRepliesHidden] = useState(false);
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState<"report" | "remove" | "delete" | null>(null);
@@ -186,20 +186,21 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
   return (
     <div className={`c ${top ? "c-top" : ""}`}>
       <div className={`c-head ${kids > 0 ? "folds" : ""}`} onClick={fold}>
-        {c.deleted || !c.author ? <span className="c-avatar c-avatar-gone" /> : (
+        {collapsed ? (
+          <span className="c-avatar c-plus"><span className="c-toggle" aria-label={`Show ${kids} ${kids === 1 ? "reply" : "replies"}`}>+</span></span>
+        ) : c.deleted || !c.author ? <span className="c-avatar c-avatar-gone" /> : (
           <Link href={`/u/${c.author.username}`} onClick={e => e.stopPropagation()} aria-label={`u/${c.author.username}`}>
             <Avatar user={c.author} size={top ? 28 : 24} />
           </Link>
         )}
         <b>{c.deleted || !c.author ? "[deleted]" : c.author.username}</b>
-        {isOp && <span className="op">OP</span>}
-        {flair && !c.deleted && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
+        {isOp && !collapsed && <span className="op">OP</span>}
+        {flair && !c.deleted && !collapsed && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
         <span>{timeAgo(c.created_at)}</span>
-        {c.edited_at && !c.deleted && <span>edited</span>}
-        {collapsed && <span className="c-toggle inline" aria-label={`Show ${kids} ${kids === 1 ? "reply" : "replies"}`}>+</span>}
+        {!collapsed && c.edited_at && !c.deleted && <span>edited</span>}
       </div>
       {!collapsed && (
-        <div className={`c-content ${kids > 0 && !repliesHidden ? "has-kids" : ""}`}>
+        <div className={`c-content ${kids > 0 ? "has-kids" : ""}`}>
           <div className="c-own">
             {editing ? (
               <Composer ctx={ctx} parentId={c.parent_id} placeholder="Edit your comment" initial={c.body} editId={c.id} onDone={() => setEditing(false)} />
@@ -209,11 +210,7 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
               <div className="c-body"><div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body, { allowedDomains: ctx.allowedDomains, hubs: ctx.hubs }) }} /></div>
             )}
             <div className="actions c-actions">
-              {kids > 0 && (
-                <button className="c-toggle" onClick={() => setRepliesHidden(h => !h)} aria-label={repliesHidden ? `Show ${kids} ${kids === 1 ? "reply" : "replies"}` : "Hide replies"}>
-                  {repliesHidden ? "+" : "-"}
-                </button>
-              )}
+              {kids > 0 && <button className="c-toggle" onClick={() => setCollapsed(true)} aria-label="Fold this thread">-</button>}
               {!c.deleted && !editing && (
                 <>
                   <Votes table="comment_votes" id={c.id} score={c.score} mine={myVote(c.my_vote)} signedIn={ctx.signedIn} />
@@ -229,11 +226,10 @@ function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: bool
                   />
                 </>
               )}
-              {repliesHidden && <button className="act" onClick={() => setRepliesHidden(false)}>{kids} more {kids === 1 ? "reply" : "replies"}</button>}
             </div>
             {replying && <Composer ctx={ctx} parentId={c.id} placeholder={`Reply to u/${c.author?.username ?? "deleted"}`} onDone={() => setReplying(false)} />}
           </div>
-          {kids > 0 && !repliesHidden && (
+          {kids > 0 && (
             <div className="c-children">{node.children.map(k => <CommentItem key={k.comment.id} node={k} ctx={ctx} />)}</div>
           )}
         </div>

@@ -108,7 +108,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
         </Covered>
       )}
       {post.original && <OriginalCard original={post.original} spoiler={spoiler} mature={mature} signedIn={signedIn} />}
-      {firstLink && !spoiler && !mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} />}
+      {firstLink && !spoiler && !mature && <LinkCard url={firstLink} onPlays={() => setLinkPlays(true)} postHref={href} onOpen={open} />}
       <div className="actions">
         <Votes table="post_votes" id={post.id} score={post.score} mine={myVote(post.my_vote)} signedIn={signedIn} />
         <Link href={`${href}#comments`} className="act" onClick={open} aria-label={countLabel(post.comment_count, "comment")}>

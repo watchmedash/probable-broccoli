@@ -113,8 +113,10 @@ export function AdminSettings() {
   const [domain, setDomain] = useState("");
   const [embeds, setEmbeds] = useState<string[] | null>(null);
   const [embed, setEmbed] = useState("");
+  const [newLimits, setNewLimits] = useState<boolean | null>(null);
   const load = useCallback(async () => {
-    const [w, d, e] = await Promise.all([sb.from("blocked_words").select("word,level").order("word"), sb.from("site_link_domains").select("domain").order("domain"), sb.from("site_blocked_video_domains").select("domain").order("domain")]);
+    const [w, d, e, s] = await Promise.all([sb.from("blocked_words").select("word,level").order("word"), sb.from("site_link_domains").select("domain").order("domain"), sb.from("site_blocked_video_domains").select("domain").order("domain"), sb.from("site_settings").select("new_account_limits").maybeSingle()]);
+    setNewLimits(s.data?.new_account_limits ?? false);
     setEmbeds((e.data ?? []).map((r: { domain: string }) => r.domain));
     setWords(w.data ?? []);
     setDomains((d.data ?? []).map((r: { domain: string }) => r.domain));
@@ -126,6 +128,14 @@ export function AdminSettings() {
     <>
       <Section title="Site admin">
         <Link href="/admin/reports" className="linkish">Every open report</Link>
+        {newLimits !== null && (
+          <Switch
+            label="Tighter limits for new accounts"
+            help="For their first day: 3 posts and 15 comments an hour, and 1 new hub."
+            on={newLimits}
+            onChange={v => { setNewLimits(v); act(sb.from("site_settings").update({ new_account_limits: v }).eq("id", true)); }}
+          />
+        )}
       </Section>
       <Section title="Word filter">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

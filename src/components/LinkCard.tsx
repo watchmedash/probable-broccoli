@@ -12,7 +12,8 @@ let blockList: Promise<string[]> | null = null;
 const loadBlockList = () => (blockList ??= Promise.resolve(browserSupabase().from("site_blocked_video_domains").select("domain")).then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)));
 
 /** The first link in a post as a card, from the same link-preview server function the app uses (through our own address). A page that says it holds a video plays above its card, unless its site is blocked. */
-export function LinkCard({ url, blockedVideos, onPlays }: { url: string; blockedVideos?: string[]; onPlays?: () => void }) {
+/** With [postHref] (a feed card) the card opens the post, like the rest of the card; the site opens from the post page. */
+export function LinkCard({ url, blockedVideos, onPlays, postHref, onOpen }: { url: string; blockedVideos?: string[]; onPlays?: () => void; postHref?: string; onOpen?: (e: React.MouseEvent) => void }) {
   const [p, setP] = useState<Preview | null>(null);
   const [blocked, setBlocked] = useState(blockedVideos ?? []);
   const spot = useRef<HTMLDivElement>(null);
@@ -46,7 +47,7 @@ export function LinkCard({ url, blockedVideos, onPlays }: { url: string; blocked
   return (
     <>
       {video && <VideoPlayer video={video} title={p.title ?? undefined} poster={p.image} playInline />}
-      {!video && <a href={url} target="_blank" rel="nofollow ugc noopener" className="panel" style={{ display: "flex", gap: 12, padding: 12, margin: "8px 0", alignItems: "center" }}>
+      {!video && <a href={postHref ?? url} {...(postHref ? { onClick: onOpen } : { target: "_blank", rel: "nofollow ugc noopener" })} className="panel" style={{ display: "flex", gap: 12, padding: 12, margin: "8px 0", alignItems: "center" }}>
         <span style={{ flex: 1, minWidth: 0 }}>
           <b style={{ display: "block" }}>{p.title ?? url}</b>
           {p.description && <span className="muted small" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</span>}
