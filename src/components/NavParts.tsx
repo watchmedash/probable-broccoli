@@ -14,9 +14,13 @@ export function MenuButton() {
   );
 }
 
-/** A plain column on wide screens; a drawer over the page on narrow ones. Closes when you navigate. */
+/**
+ * A plain column on wide screens; a drawer over the page on narrow ones. Closes when you navigate.
+ * Hidden on a wide screen, it slides out while the mouse is at the left edge, and back when it leaves.
+ */
 export function NavDrawer({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [peek, setPeek] = useState(false);
   const path = usePathname();
   const params = useSearchParams();
   useEffect(() => {
@@ -24,11 +28,12 @@ export function NavDrawer({ children }: { children: React.ReactNode }) {
     window.addEventListener(TOGGLE, toggle);
     return () => window.removeEventListener(TOGGLE, toggle);
   }, []);
-  useEffect(() => { setOpen(false); }, [path, params]);
+  useEffect(() => { setOpen(false); setPeek(false); }, [path, params]);
   return (
     <>
       {open && <div className="nav-back" onClick={() => setOpen(false)} />}
-      <aside className={`leftnav ${open ? "open" : ""}`}>{children}</aside>
+      <div className="nav-edge" onMouseEnter={() => setPeek(true)} aria-hidden />
+      <aside className={`leftnav ${open ? "open" : ""} ${peek ? "peek" : ""}`} onMouseLeave={() => setPeek(false)}>{children}</aside>
     </>
   );
 }

@@ -2,7 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { plainText, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
+import { renderPreview } from "@/lib/markdown";
 import { guestOpens } from "@/lib/guestOpens";
 import { firstBodyImage } from "@/lib/mdedit";
 import type { Post } from "@/lib/types";
@@ -13,7 +14,7 @@ import { Covered } from "./Media";
 export function OriginalCard({ original, spoiler = false, mature = false, signedIn = true }: { original: NonNullable<Post["original"]>; spoiler?: boolean; mature?: boolean; signedIn?: boolean }) {
   const router = useRouter();
   const picture = original.image_urls?.[0] ?? original.image_url ?? firstBodyImage(original.body);
-  const text = plainText(original.body, 240);
+  const text = original.body.trim() ? renderPreview(original.body, 400) : "";
   return (
     <Link href={`/p/${original.id}`} onClick={guestOpens(signedIn, router, `/p/${original.id}`)} className="panel" style={{ display: "block", padding: 12, margin: "8px 0", background: "var(--surface-2)" }}>
       <span className="meta">
@@ -24,7 +25,7 @@ export function OriginalCard({ original, spoiler = false, mature = false, signed
       {(picture || text) && (
         <Covered spoiler={spoiler || !!original.spoiler} mature={mature || !!original.mature}>
           {picture && <span className="media"><img src={picture} alt="" loading="lazy" /></span>}
-          {text && !picture && <span className="card-body">{text}</span>}
+          {text && !picture && <div className="card-body md card-md" dangerouslySetInnerHTML={{ __html: text }} />}
         </Covered>
       )}
     </Link>

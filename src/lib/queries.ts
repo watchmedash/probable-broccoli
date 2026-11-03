@@ -181,6 +181,12 @@ export async function fetchProfile(sb: SupabaseClient, username: string): Promis
   return ((data ?? [])[0] as Profile) ?? null;
 }
 
+/** Every hub's name, so n/name only turns into a link when that hub exists. */
+export async function hubNames(sb: SupabaseClient): Promise<string[]> {
+  const { data } = await sb.from("communities").select("name").limit(5000);
+  return (data ?? []).map((r: { name: string }) => r.name);
+}
+
 export async function myHubIds(sb: SupabaseClient, uid: string): Promise<number[]> {
   const { data } = await sb.from("hub_members").select("hub_id").eq("user_id", uid);
   return (data ?? []).map((r: { hub_id: number }) => r.hub_id);
@@ -226,7 +232,7 @@ export const REPORT_REASONS: [string, string][] = [
   ["other", "Something else"],
 ];
 
-export const HUB_SETTINGS_COLUMNS = HUB_COLUMNS + ",automod_words,automod_domains,automod_min_days,filter_swearing";
+export const HUB_SETTINGS_COLUMNS = HUB_COLUMNS + ",automod_words,automod_domains,automod_min_days,automod_min_sparks,posts_per_hour,filter_swearing";
 
 export type HubMod = { user: { id: string; username: string; avatar_url: string | null }; can_posts: boolean; can_members: boolean; can_settings: boolean };
 
@@ -291,3 +297,6 @@ export function describeModAction(e: { action: string; detail: string; actor: { 
     default: return `${who}: ${e.action}${about}`;
   }
 }
+
+/** A comment on someone's profile, with the post it's on. */
+export const PROFILE_COMMENT_COLUMNS = "id,body,score,created_at,edited_at,post:posts(id,title,community:communities(name))";

@@ -17,7 +17,7 @@ import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
-import { blockedIds, fetchComments, fetchPost, hubAccess, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
+import { blockedIds, fetchComments, fetchPost, hubAccess, hubNames, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { firstBodyImage } from "@/lib/mdedit";
@@ -50,7 +50,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const { me, sb, post } = await load(Number((await params).id));
   if (!post) notFound();
   const hub = post.community;
-  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, blockedVideos] = await Promise.all([
+  const [comments, siteDomains, admin, team, member, ban, blocked, flairRows, blockedVideos, hubs] = await Promise.all([
     fetchComments(sb, post.id, !!me),
     hub ? Promise.resolve(null) : sb.from("site_link_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     isSiteAdmin(sb, me?.id),
@@ -60,6 +60,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     blockedIds(sb, me?.id),
     hub?.allow_user_flair ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
     sb.from("site_blocked_video_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
+    hubNames(sb),
   ]);
   const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
   const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
@@ -157,7 +158,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
               {images.length > 1 && <div className="gallery">{images.map(u => <img key={u} src={u} alt="" loading="lazy" />)}</div>}
               {yt && <YouTube id={yt} title={post.title} playInline />}
               {video && <VideoPlayer video={video} title={post.title} playInline />}
-              {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody) }} />}
+              {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody, { hubs }) }} />}
             </Lightbox>
           </Covered>
           {post.original && <OriginalCard original={post.original} spoiler={post.spoiler} mature={post.mature} />}
@@ -178,6 +179,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
           myId={me?.id ?? null}
           closed={closed}
           allowedDomains={allowed}
+          hubs={hubs}
+          opId={post.author?.id ?? null}
           canRemove={access.canRemove}
           blocked={blocked}
           userFlairs={userFlairs}

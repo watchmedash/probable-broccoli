@@ -31,6 +31,9 @@ export type Hub = {
   automod_words?: string[];
   automod_domains?: string[];
   automod_min_days?: number;
+  automod_min_sparks?: number;
+  /** Posts one person may make here in an hour. Null: no limit. */
+  posts_per_hour?: number | null;
   allow_user_flair?: boolean;
   /** 18+ hubs only: keep the swearing filter on anyway. */
   filter_swearing?: boolean;

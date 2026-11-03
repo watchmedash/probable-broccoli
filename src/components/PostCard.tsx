@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Post } from "@/lib/types";
 import { myVote } from "@/lib/types";
-import { countLabel, plainText, timeAgo } from "@/lib/format";
+import { countLabel, timeAgo } from "@/lib/format";
 import { guestOpens } from "@/lib/guestOpens";
 import { firstBodyImage } from "@/lib/mdedit";
+import { renderPreview } from "@/lib/markdown";
 import type { Viewer } from "@/lib/queries";
 import { firstVideo, withoutBareLink } from "@/lib/video";
 import { firstYouTube } from "@/lib/youtube";
@@ -42,7 +43,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
   // No picture or player: the first link gets a card below. If its page holds a video that plays, the link's text goes.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
   const previewText = yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : firstLink && linkPlays ? withoutBareLink(post.body, firstLink) : post.body;
-  const preview = plainText(previewText, 300);
+  const preview = previewText.trim() ? renderPreview(previewText) : "";
   const hub = post.community;
   const owner = !!viewer && (viewer.admin || hub?.created_by === viewer.id);
   const isStaff = owner || (!!hub && !!viewer?.staffHubs.includes(hub.id));
@@ -102,7 +103,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
           ) : video ? (
             <VideoPlayer video={video} title={post.title} playInline={false} />
           ) : null}
-          {preview && images.length === 0 && <p className="card-body">{preview}</p>}
+          {preview && images.length === 0 && <div className="card-body md card-md" dangerouslySetInnerHTML={{ __html: preview }} />}
         </Link>
         </Covered>
       )}

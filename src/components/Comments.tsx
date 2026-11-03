@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAutoGrow } from "@/lib/autogrow";
 import { useRouter } from "next/navigation";
 import { browserSupabase } from "@/lib/supabase/client";
@@ -14,14 +14,16 @@ import { Avatar } from "./Avatars";
 import { Icon, I } from "./Icon";
 import { ReportDialog } from "./Report";
 import { AskDialog } from "./Dialogs";
-import { useToast } from "./Toast";
 import { Votes } from "./VoteBar";
 
 type Ctx = {
   signedIn: boolean;
   myId: string | null;
+  /** Who wrote the post, for the OP tag. */
+  opId: string | null;
   closed: boolean;
   allowedDomains: string[];
+  hubs: string[];
   postId: number;
   canRemove: boolean;
   userFlairs: Record<string, { text: string; color: string }>;
@@ -29,16 +31,16 @@ type Ctx = {
   replace: (c: Comment) => void;
 };
 
-export function Comments({ postId, initial, signedIn, myId, closed, allowedDomains, canRemove = false, blocked = [], userFlairs = {} }: {
-  postId: number; initial: Comment[]; signedIn: boolean; myId: string | null; closed: boolean; allowedDomains: string[];
-  canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string }>;
+export function Comments({ postId, initial, signedIn, myId, opId = null, closed, allowedDomains, hubs = [], canRemove = false, blocked = [], userFlairs = {} }: {
+  postId: number; initial: Comment[]; signedIn: boolean; myId: string | null; opId?: string | null; closed: boolean; allowedDomains: string[];
+  hubs?: string[]; canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string }>;
 }) {
   // Comments from people you blocked are left out, like in the app.
   const [rows, setRows] = useState(() => initial.filter(c => !c.author || !blocked.includes(c.author.id)));
   const [sort, setSort] = useState<CommentSort>("top");
   const tree = useMemo(() => buildTree(rows, sort), [rows, sort]);
   const ctx: Ctx = {
-    signedIn, myId, closed, allowedDomains, postId, canRemove, userFlairs,
+    signedIn, myId, opId, closed, allowedDomains, hubs, postId, canRemove, userFlairs,
     add: c => setRows(r => [...r, c]),
     replace: c => setRows(r => r.map(x => (x.id === c.id ? c : x))),
   };
@@ -55,7 +57,7 @@ export function Comments({ postId, initial, signedIn, myId, closed, allowedDomai
         ))}
       </nav>
       {tree.length === 0 ? <p className="muted" style={{ padding: "16px 0" }}>No comments yet.</p> : (
-        <div className="thread">{tree.map(n => <CommentItem key={n.comment.id} node={n} depth={0} ctx={ctx} />)}</div>
+        <div className="thread">{tree.map(n => <CommentItem key={n.comment.id} node={n} top ctx={ctx} />)}</div>
       )}
     </section>
   );
@@ -104,11 +106,12 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
   }
   return (
     <div className="composer">
+      {/* One line until you write more; it grows with the text. */}
       <textarea
         ref={box}
         value={text}
         placeholder={placeholder}
-        rows={focused ? 4 : 1}
+        rows={1}
         maxLength={10000}
         onFocus={() => setFocused(true)}
         onChange={e => setText(e.target.value)}
@@ -127,79 +130,117 @@ function Composer({ ctx, parentId, placeholder, initial = "", onDone, editId }: 
   );
 }
 
-function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; ctx: Ctx }) {
+/** A comment's ⋮ menu: edit and delete your own, report other people's, and remove for mods. */
+function CommentMenu({ mine, signedIn, canRemove, onEdit, onDelete, onReport, onRemove }: {
+  mine: boolean; signedIn: boolean; canRemove: boolean; onEdit: () => void; onDelete: () => void; onReport: () => void; onRemove: () => void;
+}) {
+  const [open, setOpen] = useState<"down" | "up" | null>(null);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(null); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  if (!signedIn) return null;
+  const run = (fn: () => void) => () => { setOpen(null); fn(); };
+  return (
+    <span ref={box} style={{ position: "relative" }}>
+      <button className="act" aria-label="Comment options" aria-expanded={!!open} onClick={e => setOpen(o => (o ? null : e.clientY > window.innerHeight - 220 ? "up" : "down"))}>
+        <Icon icon={I.more} size={13} />
+      </button>
+      {open && (
+        <div className="menu" style={{ left: 0, right: "auto", top: open === "down" ? 36 : "auto", bottom: open === "up" ? 36 : "auto" }}>
+          {mine ? (
+            <>
+              <button onClick={run(onEdit)}><Icon icon={I.edit} size={14} /> Edit</button>
+              <button onClick={run(onDelete)} style={{ color: "var(--error)" }}><Icon icon={I.trash} size={14} /> Delete</button>
+            </>
+          ) : (
+            <button onClick={run(onReport)}><Icon icon={I.flag} size={14} /> Report</button>
+          )}
+          {canRemove && !mine && <button onClick={run(onRemove)} style={{ color: "var(--error)" }}><Icon icon={I.trash} size={14} /> Remove</button>}
+        </div>
+      )}
+    </span>
+  );
+}
+
+/**
+ * One comment, Reddit style: a line runs from its avatar down to its replies, with a circled minus
+ * on the line to fold them away. Tapping the name row folds the whole comment to its name and a plus.
+ */
+function CommentItem({ node, top = false, ctx }: { node: CommentNode; top?: boolean; ctx: Ctx }) {
   const c = node.comment;
   const [collapsed, setCollapsed] = useState(false);
+  const [repliesHidden, setRepliesHidden] = useState(false);
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [reporting, setReporting] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const toast = useToast();
+  const [dialog, setDialog] = useState<"report" | "remove" | "delete" | null>(null);
   const flair = c.author ? ctx.userFlairs[c.author.id] : undefined;
   const mine = !!ctx.myId && c.author?.id === ctx.myId && !c.deleted;
+  const kids = node.children.length;
+  const isOp = !c.deleted && !!c.author && c.author.id === ctx.opId;
+  // Only a comment with replies folds.
+  const fold = () => { if (kids > 0) setCollapsed(v => !v); };
   return (
-    <div className="c">
-      <div className="c-main">
-        <div className="c-head">
-          <button className="linkish" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? "Expand thread" : "Collapse thread"} style={{ color: "var(--muted)" }}>
-            [{collapsed ? "+" : "-"}]
-          </button>
-          {c.deleted || !c.author ? <b>[deleted]</b> : (
-            <Link href={`/u/${c.author.username}`} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <Avatar user={c.author} size={20} />
-              <b>u/{c.author.username}</b>
-            </Link>
-          )}
-          {flair && !c.deleted && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
-          <span>{timeAgo(c.created_at)}</span>
-          {c.edited_at && !c.deleted && <span>edited</span>}
-        </div>
-        {!collapsed && (
-          <>
+    <div className={`c ${top ? "c-top" : ""}`}>
+      <div className={`c-head ${kids > 0 ? "folds" : ""}`} onClick={fold}>
+        {c.deleted || !c.author ? <span className="c-avatar c-avatar-gone" /> : (
+          <Link href={`/u/${c.author.username}`} onClick={e => e.stopPropagation()} aria-label={`u/${c.author.username}`}>
+            <Avatar user={c.author} size={top ? 28 : 24} />
+          </Link>
+        )}
+        <b>{c.deleted || !c.author ? "[deleted]" : c.author.username}</b>
+        {isOp && <span className="op">OP</span>}
+        {flair && !c.deleted && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
+        <span>{timeAgo(c.created_at)}</span>
+        {c.edited_at && !c.deleted && <span>edited</span>}
+        {collapsed && <span className="c-toggle inline" aria-label={`Show ${kids} ${kids === 1 ? "reply" : "replies"}`}>+</span>}
+      </div>
+      {!collapsed && (
+        <div className={`c-content ${kids > 0 && !repliesHidden ? "has-kids" : ""}`}>
+          <div className="c-own">
             {editing ? (
               <Composer ctx={ctx} parentId={c.parent_id} placeholder="Edit your comment" initial={c.body} editId={c.id} onDone={() => setEditing(false)} />
             ) : c.deleted ? (
               <p className="c-body c-deleted">[deleted]</p>
             ) : (
-              <div className="c-body"><div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body, { allowedDomains: ctx.allowedDomains }) }} /></div>
+              <div className="c-body"><div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body, { allowedDomains: ctx.allowedDomains, hubs: ctx.hubs }) }} /></div>
             )}
-            {!c.deleted && !editing && (
-              <div className="actions" style={{ margin: "0 -8px" }}>
-                <Votes table="comment_votes" id={c.id} score={c.score} mine={myVote(c.my_vote)} signedIn={ctx.signedIn} />
-                {!ctx.closed && <button className="act" onClick={() => setReplying(r => !r)} aria-label="Reply"><Icon icon={I.reply} size={13} /></button>}
-                {mine ? (
-                  <>
-                    <button className="act" onClick={() => setEditing(true)} aria-label="Edit"><Icon icon={I.edit} size={12} /></button>
-                    <button
-                      className="act"
-                      aria-label="Delete"
-                      onClick={async () => {
-                        if (!confirm("Delete this comment?")) return;
-                        const { error } = await browserSupabase().from("comments").update({ deleted: true }).eq("id", c.id);
-                        if (error) return toast(errorMessage(error));
-                        ctx.replace({ ...c, deleted: true });
-                      }}
-                    >
-                      <Icon icon={I.trash} size={12} />
-                    </button>
-                  </>
-                ) : ctx.signedIn && (
-                  <button className="act" onClick={() => setReporting(true)} aria-label="Report"><Icon icon={I.flag} size={12} /></button>
-                )}
-                {ctx.canRemove && !mine && (
-                  <button className="act" onClick={() => setRemoving(true)} aria-label="Remove comment" style={{ color: "var(--error)" }}><Icon icon={I.trash} size={12} /></button>
-                )}
-              </div>
-            )}
+            <div className="actions c-actions">
+              {kids > 0 && (
+                <button className="c-toggle" onClick={() => setRepliesHidden(h => !h)} aria-label={repliesHidden ? `Show ${kids} ${kids === 1 ? "reply" : "replies"}` : "Hide replies"}>
+                  {repliesHidden ? "+" : "-"}
+                </button>
+              )}
+              {!c.deleted && !editing && (
+                <>
+                  <Votes table="comment_votes" id={c.id} score={c.score} mine={myVote(c.my_vote)} signedIn={ctx.signedIn} />
+                  {!ctx.closed && <button className="act" onClick={() => setReplying(r => !r)} aria-label="Reply"><Icon icon={I.reply} size={13} /></button>}
+                  <CommentMenu
+                    mine={mine}
+                    signedIn={ctx.signedIn}
+                    canRemove={ctx.canRemove}
+                    onEdit={() => setEditing(true)}
+                    onDelete={() => setDialog("delete")}
+                    onReport={() => setDialog("report")}
+                    onRemove={() => setDialog("remove")}
+                  />
+                </>
+              )}
+              {repliesHidden && <button className="act" onClick={() => setRepliesHidden(false)}>{kids} more {kids === 1 ? "reply" : "replies"}</button>}
+            </div>
             {replying && <Composer ctx={ctx} parentId={c.id} placeholder={`Reply to u/${c.author?.username ?? "deleted"}`} onDone={() => setReplying(false)} />}
-            {node.children.length > 0 && (
-              <div className="c-children">{node.children.map(k => <CommentItem key={k.comment.id} node={k} depth={depth + 1} ctx={ctx} />)}</div>
-            )}
-          </>
-        )}
-      </div>
-      {reporting && <ReportDialog target={{ comment_id: c.id }} onClose={() => setReporting(false)} />}
-      {removing && (
+          </div>
+          {kids > 0 && !repliesHidden && (
+            <div className="c-children">{node.children.map(k => <CommentItem key={k.comment.id} node={k} ctx={ctx} />)}</div>
+          )}
+        </div>
+      )}
+      {dialog === "report" && <ReportDialog target={{ comment_id: c.id }} onClose={() => setDialog(null)} />}
+      {dialog === "delete" && <DeleteDialog c={c} ctx={ctx} onClose={() => setDialog(null)} />}
+      {dialog === "remove" && (
         <AskDialog
           title="Remove this comment?"
           text="The author is told, with your reason if you give one. It goes in the mod log."
@@ -207,7 +248,7 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
           placeholder="Reason (optional)"
           action="Remove"
           danger
-          onClose={() => setRemoving(false)}
+          onClose={() => setDialog(null)}
           onConfirm={async reason => {
             const { error } = await browserSupabase().rpc("remove_comment", { comment: c.id, reason: reason || null });
             if (error) return errorMessage(error);
@@ -216,5 +257,22 @@ function CommentItem({ node, depth, ctx }: { node: CommentNode; depth: number; c
         />
       )}
     </div>
+  );
+}
+
+function DeleteDialog({ c, ctx, onClose }: { c: Comment; ctx: Ctx; onClose: () => void }) {
+  return (
+    <AskDialog
+      title="Delete this comment?"
+      text="Replies stay, under [deleted]."
+      action="Delete"
+      danger
+      onClose={onClose}
+      onConfirm={async () => {
+        const { error } = await browserSupabase().from("comments").update({ deleted: true }).eq("id", c.id);
+        if (error) return errorMessage(error);
+        ctx.replace({ ...c, deleted: true });
+      }}
+    />
   );
 }

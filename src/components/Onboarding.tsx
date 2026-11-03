@@ -64,7 +64,7 @@ export function PickHubs({ hubs }: { hubs: Hub[] }) {
     router.refresh();
   }
   return (
-    <div className="form-page" style={{ maxWidth: 560 }}>
+    <div className="form-page" style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", alignItems: "center" }}>
         <h1 style={{ flex: 1 }}>Pick some hubs</h1>
         <button className="linkish" onClick={() => { router.push("/"); router.refresh(); }}>Skip</button>
@@ -77,7 +77,7 @@ export function PickHubs({ hubs }: { hubs: Hub[] }) {
             <HubIcon hub={h} size={40} />
             <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
               <b>n/{h.name}</b>
-              {h.description && <span className="muted small">{h.description}</span>}
+              {h.description && <span className="muted small desc" title={h.description}>{h.description}</span>}
             </span>
           </label>
         ))}

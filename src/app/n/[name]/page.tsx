@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { HubIcon } from "@/components/Avatars";
+import { Viewable } from "@/components/Lightbox";
 import { FeedList } from "@/components/FeedList";
 import { HubBell } from "@/components/HubBell";
 import { JoinButton } from "@/components/JoinButton";
@@ -60,9 +61,9 @@ export default async function HubPage({ params, searchParams }: { params: Promis
     <main className="page">
       <div>
         <header className="head">
-          {hub.banner_url && <div className="banner" style={{ backgroundImage: `url(${hub.banner_url})` }} role="img" aria-label="" />}
+          {hub.banner_url && <Viewable src={hub.banner_url} label="View cover" className="banner-view"><div className="banner" style={{ backgroundImage: `url(${hub.banner_url})` }} /></Viewable>}
           <div className={`head-row ${hub.banner_url ? "" : "no-banner"}`}>
-            <HubIcon hub={hub} size={hub.banner_url ? 80 : 56} />
+            <Viewable src={hub.icon_url} label="View icon"><HubIcon hub={hub} size={hub.banner_url ? 80 : 56} /></Viewable>
             <div className="head-title">
               <h1>n/{hub.name}</h1>
               {hub.is_mature && <span className="muted small">18+</span>}

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { timeAgo, countLabel } from "./format";
 import { nextVote, applyVote } from "./votes";
 import { buildTree, type CommentSort } from "./comments";
-import { renderMarkdown } from "./markdown";
+import { renderMarkdown, renderPreview } from "./markdown";
 import { youTubeId } from "./youtube";
 import { firstBodyImage, imageMarkdown, isImageUrl, linePrefix, wrapSelection } from "./mdedit";
 import { hotWeight, shuffleHot } from "./hotOrder";
@@ -85,8 +85,20 @@ describe("markdown", () => {
   it("escapes raw html", () => {
     expect(renderMarkdown("<script>alert(1)</script>")).not.toContain("<script>");
   });
+  it("only links hubs that exist", () => {
+    expect(renderMarkdown("try n/nowhere", { hubs: ["general"] })).not.toContain("href");
+    expect(renderMarkdown("try n/general")).not.toContain("href");
+  });
+  it("formats feed previews without links or pictures", () => {
+    const html = renderPreview("**bold** and [a link](https://x.com) ![pic](https://x.com/a.png)");
+    expect(html).toContain("<strong>bold</strong>");
+    expect(html).not.toContain("<a ");
+    expect(html).toContain('<span class="md-link">a link</span>');
+    expect(html).not.toContain("<img");
+    expect(renderPreview("word ".repeat(400), 100).length).toBeLessThan(130);
+  });
   it("links u/ and n/ mentions", () => {
-    const html = renderMarkdown("ask u/nakodu in n/general");
+    const html = renderMarkdown("ask u/nakodu in n/general", { hubs: ["General"] });
     expect(html).toContain('href="/u/nakodu"');
     expect(html).toContain('href="/n/general"');
   });

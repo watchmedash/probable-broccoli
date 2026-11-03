@@ -84,7 +84,8 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
     allow_crossposts: hub.allow_crossposts ?? true, flair_required: hub.flair_required, allow_user_flair: hub.allow_user_flair ?? false,
     link_domains: (hub.link_domains ?? []).join("\n"), automod_words: (hub.automod_words ?? []).join("\n"),
     automod_domains: (hub.automod_domains ?? []).join("\n"), automod_min_days: hub.automod_min_days ?? 0,
-    filter_swearing: hub.filter_swearing ?? false,
+    filter_swearing: hub.filter_swearing ?? false, automod_min_sparks: hub.automod_min_sparks ?? 0,
+    posts_per_hour: hub.posts_per_hour == null ? "" : String(hub.posts_per_hour),
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +105,9 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
       automod_words: lines(s.automod_words),
       automod_domains: lines(s.automod_domains),
       automod_min_days: Math.max(0, Math.min(365, Number(s.automod_min_days) || 0)),
+      automod_min_sparks: Math.max(0, Math.min(1000000, Math.round(Number(s.automod_min_sparks)) || 0)),
+      // Empty means no limit.
+      posts_per_hour: s.posts_per_hour.trim() === "" || Number(s.posts_per_hour) <= 0 ? null : Math.min(1000, Math.round(Number(s.posts_per_hour))),
     }).eq("id", hub.id);
     setBusy(false);
     if (error) return setError(errorMessage(error));
@@ -152,6 +156,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <Toggle label="Polls" on={s.allow_polls} onChange={v => set("allow_polls", v)} />
           <Toggle label="Crossposts" help="Posts here can be shared to other hubs." on={s.allow_crossposts} onChange={v => set("allow_crossposts", v)} />
           <Toggle label="Every post needs a prefix" on={s.flair_required} onChange={v => set("flair_required", v)} />
+          <div className="field"><label htmlFor="pph">Posts per person an hour</label><input id="pph" type="number" min={1} max={1000} value={s.posts_per_hour} placeholder="No limit" onChange={e => set("posts_per_hour", e.target.value)} /></div>
           <Toggle label="User flair" help="Mods can give members a short tag shown next to their name here." on={s.allow_user_flair} onChange={v => set("allow_user_flair", v)} />
           <div className="field"><label htmlFor="ld">Clickable links in comments (one site per line)</label><textarea id="ld" value={s.link_domains} placeholder={"youtube.com\nwikipedia.org"} onChange={e => set("link_domains", e.target.value)} style={{ minHeight: 90 }} /></div>
         </>
@@ -162,6 +167,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <div className="field"><label htmlFor="aw">Blocked words (one per line)</label><textarea id="aw" value={s.automod_words} onChange={e => set("automod_words", e.target.value)} style={{ minHeight: 90 }} /></div>
           <div className="field"><label htmlFor="ad">Blocked sites (one per line)</label><textarea id="ad" value={s.automod_domains} onChange={e => set("automod_domains", e.target.value)} style={{ minHeight: 90 }} /></div>
           <div className="field"><label htmlFor="am">Accounts must be at least this many days old to post</label><input id="am" type="number" min={0} max={365} value={s.automod_min_days} onChange={e => set("automod_min_days", Number(e.target.value))} /></div>
+          <div className="field"><label htmlFor="ms">Accounts need at least this many sparks to post</label><input id="ms" type="number" min={0} max={1000000} value={s.automod_min_sparks} onChange={e => set("automod_min_sparks", Number(e.target.value))} /></div>
         </>
       )}
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}

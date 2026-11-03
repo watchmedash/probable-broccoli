@@ -3,7 +3,7 @@ import MarkdownIt from "markdown-it";
 // Raw HTML is never allowed: it's escaped and shows as text.
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: false });
 
-type Env = { allowedDomains?: string[] };
+type Env = { allowedDomains?: string[]; preview?: boolean };
 
 const isLocal = (href: string) => href.startsWith("/") && !href.startsWith("//");
 const hostAllowed = (href: string, allowed: string[]) => {
@@ -21,6 +21,11 @@ const defaultOpen = md.renderer.rules.link_open ?? ((tokens, i, opts, _env, self
 const defaultClose = md.renderer.rules.link_close ?? ((tokens, i, opts, _env, self) => self.renderToken(tokens, i, opts));
 md.renderer.rules.link_open = (tokens, i, opts, env: Env, self) => {
   const href = tokens[i].attrGet("href") ?? "";
+  // A feed card is one big link already, so links inside its preview are just styled text.
+  if (env.preview) {
+    tokens[i].meta = { dropped: true };
+    return '<span class="md-link">';
+  }
   if (!isLocal(href) && env.allowedDomains && !hostAllowed(href, env.allowedDomains)) {
     tokens[i].meta = { dropped: true };
     return "";
@@ -37,7 +42,7 @@ md.renderer.rules.link_close = (tokens, i, opts, env, self) => {
   for (let j = i - 1; j >= 0; j--) {
     if (tokens[j].type === "link_close") depth++;
     if (tokens[j].type === "link_open") {
-      if (depth === 0) return tokens[j].meta?.dropped ? "" : defaultClose(tokens, i, opts, env, self);
+      if (depth === 0) return tokens[j].meta?.dropped ? ((env as Env).preview ? "</span>" : "") : defaultClose(tokens, i, opts, env, self);
       depth--;
     }
   }
@@ -45,19 +50,37 @@ md.renderer.rules.link_close = (tokens, i, opts, env, self) => {
 };
 // Pictures in text get lazy loading.
 const defaultImage = md.renderer.rules.image!;
-md.renderer.rules.image = (tokens, i, opts, env, self) => {
+md.renderer.rules.image = (tokens, i, opts, env: Env, self) => {
+  // A card shows its picture on its own, so previews leave pictures out.
+  if (env.preview) return "";
   tokens[i].attrSet("loading", "lazy");
   return defaultImage(tokens, i, opts, env, self);
 };
 
-/** u/name and n/name become links, the way the app treats them. Code is left alone. */
-function linkMentions(src: string): string {
+/**
+ * u/name becomes a link, and so does n/name when that hub exists (pass the hub names, any case).
+ * Code is left alone.
+ */
+export function linkMentions(src: string, hubs?: Iterable<string>): string {
+  const known = new Set([...(hubs ?? [])].map(h => h.toLowerCase()));
   return src
     .split(/(```[\s\S]*?```|`[^`\n]*`)/)
-    .map((part, i) => (i % 2 ? part : part.replace(/(^|[\s(])(u|n)\/([A-Za-z0-9_]{3,21})\b/g, "$1[$2/$3](/$2/$3)")))
+    .map((part, i) =>
+      i % 2
+        ? part
+        : part.replace(/(^|[\s(])(u|n)\/([A-Za-z0-9_]{3,21})\b/g, (all, before: string, kind: string, name: string) =>
+            kind === "n" && !known.has(name.toLowerCase()) ? all : `${before}[${kind}/${name}](/${kind}/${name})`,
+          ),
+    )
     .join("");
 }
 
-export function renderMarkdown(src: string, opts: { allowedDomains?: string[] } = {}): string {
-  return md.render(linkMentions(src ?? ""), { allowedDomains: opts.allowedDomains } satisfies Env);
+export function renderMarkdown(src: string, opts: { allowedDomains?: string[]; hubs?: Iterable<string> } = {}): string {
+  return md.render(linkMentions(src ?? "", opts.hubs), { allowedDomains: opts.allowedDomains } satisfies Env);
+}
+
+/** A feed card's text: formatted like the post, without links or pictures, cut short. */
+export function renderPreview(src: string, max = 700): string {
+  const text = (src ?? "").length > max ? src.slice(0, max).replace(/\S*$/, "") + "…" : src ?? "";
+  return md.render(text, { preview: true } satisfies Env);
 }

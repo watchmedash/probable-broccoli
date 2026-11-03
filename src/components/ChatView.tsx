@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAutoGrow } from "@/lib/autogrow";
@@ -17,8 +18,24 @@ const MESSAGE_COLUMNS = "id,sender_id,body,created_at,reply_to,reactions:message
 const time = (s: string | null) => { const t = s ? Date.parse(s) : NaN; return Number.isNaN(t) ? -Infinity : t; };
 
 /** A message list with a box at the bottom. New messages are fetched every few seconds. */
-export function MessageList({ messages, isMine, label, above, below, menu }: {
-  messages: Msg[]; isMine: (m: Msg) => boolean; label?: (m: Msg) => string | null;
+/** A message's text, with web links, u/name and n/name (for hubs that exist) clickable. */
+function MessageText({ body, hubs }: { body: string; hubs?: string[] }) {
+  const known = new Set((hubs ?? []).map(h => h.toLowerCase()));
+  const parts = body.split(/(https?:\/\/[^\s<>"]+|(?:^|(?<=[\s(]))[un]\/[A-Za-z0-9_]{3,21}\b)/g);
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (i % 2 === 0 || !p) return p;
+        if (p.startsWith("http")) return <a key={i} href={p} target="_blank" rel="nofollow ugc noopener" className="bubble-link">{p}</a>;
+        if (p.startsWith("n/") && !known.has(p.slice(2).toLowerCase())) return p;
+        return <Link key={i} href={`/${p}`} className="bubble-link">{p}</Link>;
+      })}
+    </>
+  );
+}
+
+export function MessageList({ messages, isMine, label, above, below, menu, hubs }: {
+  messages: Msg[]; isMine: (m: Msg) => boolean; label?: (m: Msg) => string | null; hubs?: string[];
   above?: (m: Msg) => React.ReactNode; below?: (m: Msg) => React.ReactNode; menu?: (m: Msg) => React.ReactNode;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -34,7 +51,7 @@ export function MessageList({ messages, isMine, label, above, below, menu }: {
             {who && <div className="muted small" style={{ margin: "0 4px 2px", textAlign: mine ? "right" : "left" }}>{who}</div>}
             {above?.(m)}
             <div className="chat-line">
-              <div className="bubble">{m.body}</div>
+              <div className="bubble"><MessageText body={m.body} hubs={hubs} /></div>
               {menu?.(m)}
             </div>
             {below?.(m)}
@@ -119,8 +136,8 @@ function BubbleMenu({ mine, onReact, onReply, onReport, onDelete }: { mine: bool
   );
 }
 
-export function ChatView({ id, me, other, initial, status, incomingRequest, otherRead: read0, startedByMe, hiddenAt }: {
-  id: number; me: string; other: string | null; initial: Msg[]; status: string; incomingRequest: boolean; otherRead: string | null; startedByMe: boolean; hiddenAt: string | null;
+export function ChatView({ id, me, other, initial, status, incomingRequest, otherRead: read0, startedByMe, hiddenAt, hubs }: {
+  id: number; me: string; other: string | null; initial: Msg[]; status: string; incomingRequest: boolean; otherRead: string | null; startedByMe: boolean; hiddenAt: string | null; hubs?: string[];
 }) {
   const [msgs, setMsgs] = useState(initial);
   const [state, setState] = useState(status);
@@ -140,8 +157,9 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
 
   const reload = useCallback(async () => {
     // A chat you deleted on your side restarts from the next new message.
-    const { data } = await sb.from("messages").select(MESSAGE_COLUMNS).eq("conversation_id", id).gt("created_at", hiddenAt ?? "-infinity").order("created_at").limit(500);
-    if (!data) return false;
+    const { data: newest } = await sb.from("messages").select(MESSAGE_COLUMNS).eq("conversation_id", id).gt("created_at", hiddenAt ?? "-infinity").order("created_at", { ascending: false }).order("emoji", { referencedTable: "reactions" }).limit(500);
+    if (!newest) return false;
+    const data = [...newest].reverse();
     const next = JSON.stringify(data);
     if (next === lastSeen.current) return false;
     const grew = data.length !== JSON.parse(lastSeen.current).length;
@@ -182,6 +200,7 @@ export function ChatView({ id, me, other, initial, status, incomingRequest, othe
     <>
       <MessageList
         messages={msgs}
+        hubs={hubs}
         isMine={m => m.sender_id === me}
         above={m => {
           const quoted = m.reply_to ? msgs.find(x => x.id === m.reply_to) : null;

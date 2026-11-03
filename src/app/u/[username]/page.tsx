@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { Avatar } from "@/components/Avatars";
 import { Icon, I } from "@/components/Icon";
 import { FeedList } from "@/components/FeedList";
+import { Viewable } from "@/components/Lightbox";
+import { ProfileComments, type ProfileComment } from "@/components/ProfileComments";
 import { ProfileActions, SelfActions } from "@/components/ProfileActions";
 import { SortTabs } from "@/components/SortTabs";
 import { monthYear } from "@/lib/format";
-import { blockedIds, fetchPosts, fetchProfile, fetchViewer, isSiteAdmin, parseRange, parseSort } from "@/lib/queries";
+import { PAGE_SIZE } from "@/lib/config";
+import { PROFILE_COMMENT_COLUMNS, blockedIds, fetchPosts, fetchProfile, fetchViewer, isSiteAdmin, parseRange, parseSort } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 const load = cache(async (username: string) => {
@@ -29,17 +33,20 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const me = await currentUser();
   const sort = sp.sort ? parseSort(sp.sort) : "new";
   const range = parseRange(sp.t);
-  const [page, follow, admin, blocked, counts, postScores, commentScores] = await Promise.all([
-    fetchPosts(sb, { sort, range, authorId: profile.id }, !!me),
+  const tab = sp.tab === "comments" ? "comments" : "posts";
+  const [page, follow, admin, blocked, counts, sparkCount, comments] = await Promise.all([
+    tab === "posts" ? fetchPosts(sb, { sort, range, authorId: profile.id }, !!me) : Promise.resolve({ posts: [], next: null }),
     me && me.id !== profile.id ? sb.from("follows").select("followee_id").eq("follower_id", me.id).eq("followee_id", profile.id).maybeSingle() : null,
     isSiteAdmin(sb, me?.id),
     blockedIds(sb, me?.id),
     sb.from("profiles").select("followers:follows!followee_id(count),following:follows!follower_id(count)").eq("id", profile.id).maybeSingle(),
-    sb.from("posts").select("score").eq("author_id", profile.id),
-    sb.from("comments").select("score").eq("author_id", profile.id),
+    // Sparks: the score of everything someone posted and commented, counted by the database (like the app).
+    sb.rpc("user_sparks", { uid: profile.id }),
+    tab === "comments"
+      ? sb.from("comments").select(PROFILE_COMMENT_COLUMNS).eq("author_id", profile.id).eq("deleted", false).order("created_at", { ascending: false }).limit(PAGE_SIZE)
+      : Promise.resolve({ data: [] }),
   ]);
-  // Sparks: everything someone posted or commented, added up (like the app).
-  const sparks = [...(postScores.data ?? []), ...(commentScores.data ?? [])].reduce((n, r: { score: number }) => n + r.score, 0);
+  const sparks = (sparkCount.data as number | null) ?? 0;
   const c = counts.data as unknown as { followers: { count: number }[]; following: { count: number }[] } | null;
   const followers = c?.followers?.[0]?.count ?? 0;
   const followingCount = c?.following?.[0]?.count ?? 0;
@@ -48,9 +55,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     <main className="page">
       <div>
         <header className="head">
-          {profile.cover_url && <div className="banner" style={{ backgroundImage: `url(${profile.cover_url})` }} />}
+          {profile.cover_url && <Viewable src={profile.cover_url} label="View cover" className="banner-view"><div className="banner" style={{ backgroundImage: `url(${profile.cover_url})` }} /></Viewable>}
           <div className={`head-row ${profile.cover_url ? "" : "no-banner"}`}>
-            <Avatar user={profile} size={profile.cover_url ? 88 : 64} />
+            <Viewable src={profile.avatar_url} label="View avatar"><Avatar user={profile} size={profile.cover_url ? 88 : 64} /></Viewable>
             <div className="head-title">
               <h1>u/{profile.username}</h1>
               <span className="muted small">
@@ -70,8 +77,18 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
             </div>
           </div>
         </header>
-        <SortTabs base={`/u/${profile.username}`} sort={sort} range={range} defaultSort="new" />
-        <FeedList initial={page.posts} next={page.next} query={{ sort, range, authorId: profile.id }} showHub signedIn={!!me} viewer={await fetchViewer(sb, me?.id)} empty="No posts yet." />
+        <nav className="tabs big" aria-label="Profile">
+          <Link href={`/u/${profile.username}`} className={tab === "posts" ? "on" : ""} aria-current={tab === "posts" ? "page" : undefined}>Posts</Link>
+          <Link href={`/u/${profile.username}?tab=comments`} className={tab === "comments" ? "on" : ""} aria-current={tab === "comments" ? "page" : undefined}>Comments</Link>
+        </nav>
+        {tab === "comments" ? (
+          <ProfileComments authorId={profile.id} initial={(comments.data ?? []) as unknown as ProfileComment[]} signedIn={!!me} />
+        ) : (
+          <>
+            <SortTabs base={`/u/${profile.username}`} sort={sort} range={range} defaultSort="new" />
+            <FeedList initial={page.posts} next={page.next} query={{ sort, range, authorId: profile.id }} showHub signedIn={!!me} viewer={await fetchViewer(sb, me?.id)} empty="No posts yet." />
+          </>
+        )}
       </div>
       <aside className="side" />
     </main>
