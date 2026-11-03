@@ -6,7 +6,6 @@ import { HubIcon } from "@/components/Avatars";
 import { Viewable } from "@/components/Lightbox";
 import { FeedList } from "@/components/FeedList";
 import { HubBell } from "@/components/HubBell";
-import { FavoriteStar } from "@/components/FavoriteStar";
 import { JoinButton } from "@/components/JoinButton";
 import { Icon, I } from "@/components/Icon";
 import { SelfFlair } from "@/components/SelfFlair";
@@ -41,7 +40,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
   const sort = parseSort(sp.sort);
   const range = parseRange(sp.t);
   const blocked = await blockedIds(sb, me?.id);
-  const [page, member, request, admin, team, viewer, pref, fav] = await Promise.all([
+  const [page, member, request, admin, team, viewer, pref] = await Promise.all([
     fetchPosts(sb, { sort, range, hubId: hub.id, blocked }, !!me),
     me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
     me && hub.privacy === "private" ? sb.from("hub_join_requests").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
@@ -49,9 +48,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
     me ? hubTeam(sb, hub.id) : Promise.resolve([]),
     fetchViewer(sb, me?.id),
     me ? sb.from("hub_prefs").select("level").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data?.level as "all" | "mute" | undefined) : Promise.resolve(undefined),
-    me ? sb.from("hub_favorites").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
   ]);
-  const favorite = !!fav?.data;
   const joined = !!member?.data;
   const access = hubAccess(hub, me?.id ?? null, admin, team, joined, false);
   const myFlair = me && joined && hub.allow_user_flair
@@ -74,7 +71,6 @@ export default async function HubPage({ params, searchParams }: { params: Promis
             <div style={{ paddingTop: hub.banner_url ? 36 : 0, display: "flex", gap: 8 }}>
               {access.isStaff && <Link href={`/n/${hub.name}/settings`} className="icon-btn" aria-label="Hub settings"><Icon icon={I.settings} size={18} /></Link>}
               {(joined || access.isStaff) && <Link href={`/submit?hub=${hub.name}`} className="icon-btn" aria-label="Create a post"><Icon icon={I.plus} size={18} /></Link>}
-              {me && <FavoriteStar hubId={hub.id} hubName={hub.name} on={favorite} className="icon-btn hub-fav" />}
               <HubBell hubId={hub.id} hubName={hub.name} level={pref ?? "popular"} uid={me?.id ?? null} />
               <JoinButton hubId={hub.id} joined={joined} requested={!!request?.data} isPrivate={hub.privacy === "private"} signedIn={!!me} />
             </div>
