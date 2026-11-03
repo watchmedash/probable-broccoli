@@ -14,7 +14,7 @@ const roboto = localFont({ src: "./fonts/Roboto.woff2", weight: "100 900", varia
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "Nakodu: a calmer forum for communities", template: "%s | Nakodu" },
+  title: { default: "Nakodu: Join the conversation", template: "%s | Nakodu" },
   description: "Join hubs about what you love, share posts, stories and photos, vote and chat. Sign up with just a username, no email.",
   applicationName: "Nakodu",
   other: { "google-adsense-account": ADSENSE_CLIENT },
