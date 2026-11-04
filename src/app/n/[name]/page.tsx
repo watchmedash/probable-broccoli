@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
     description: hub.description || `The n/${hub.name} hub on Nakodu.`,
     alternates: { canonical: `/n/${hub.name}` },
     robots: hub.is_mature ? { index: false } : undefined,
-    openGraph: { title: `n/${hub.name}`, description: hub.description, url: `/n/${hub.name}`, images: hub.banner_url ? [{ url: hub.banner_url }] : undefined },
+    openGraph: { title: `n/${hub.name}`, description: hub.description, url: `/n/${hub.name}`, siteName: "Nakodu", images: hub.banner_url ? [{ url: hub.banner_url }] : hub.icon_url ? [{ url: hub.icon_url }] : [{ url: "/img/og.png", width: 1024, height: 500 }] },
   };
 }
 

@@ -22,7 +22,7 @@ import { blockedIds, fetchComments, fetchHubByName, fetchPost, hubAccess, hubNam
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { HeldNotice } from "@/components/HeldNotice";
-import { firstBodyImage } from "@/lib/mdedit";
+import { firstBodyImage, isImageUrl } from "@/lib/mdedit";
 import { firstVideo, isBlockedVideo, videoLink, withoutBareLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
 
@@ -37,14 +37,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { post } = await load(Number((await params).id));
   if (!post) return { title: "Post not found" };
   const where = post.community ? `n/${post.community.name}` : `u/${post.author?.username ?? "deleted"}`;
-  const image = post.image_urls?.[0] ?? post.image_url;
   const description = plainText(post.body, 180) || `A post in ${where} on Nakodu.`;
+  // Link previews (Facebook, X, chats) show the post's own picture: its gallery or upload, a picture
+  // written or linked in the text, or a YouTube thumbnail. Spoilers and 18+ get the plain Nakodu card.
+  const covered = post.spoiler || post.mature;
+  const bare = post.body.match(/https:\/\/[^\s)\]]+/g)?.find(u => isImageUrl(u, true));
+  const yt = firstYouTube(post.body);
+  const picture = covered ? null : post.image_urls?.[0] ?? post.image_url ?? firstBodyImage(post.body) ?? bare ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null);
+  const images = picture ? [{ url: picture }] : [{ url: "/img/og.png", width: 1024, height: 500 }];
   return {
     title: { absolute: post.title },
     description,
     alternates: { canonical: `/p/${post.id}` },
     robots: post.mature ? { index: false } : undefined,
-    openGraph: { type: "article", title: post.title, description, url: `/p/${post.id}`, images: image && !post.spoiler && !post.mature ? [{ url: image }] : undefined },
+    openGraph: { type: "article", siteName: "Nakodu", title: post.title, description, url: `/p/${post.id}`, images },
+    twitter: { card: "summary_large_image", title: post.title, description, images: images.map(i => i.url) },
   };
 }
 
