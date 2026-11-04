@@ -389,6 +389,7 @@ select, .field select { appearance: none; -webkit-appearance: none; padding-righ
 
 /* Chats fill the screen: the messages scroll, the box stays in view. */
 .chat-panel { display: flex; flex-direction: column; height: calc(100dvh - 90px); min-height: 320px; overflow: hidden; }
+.chat-panel > .zoomable { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .chat-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px; overflow-y: auto; }
 .chat-row { align-self: flex-start; max-width: 78%; }
 .chat-row.mine { align-self: flex-end; }
