@@ -52,7 +52,7 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
       <div className="panel-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {(tab === "general" || tab === "posting" || tab === "automod") && <SettingsForm hub={hub} part={tab} admin={admin} />}
         {tab === "prefixes" && <Prefixes hubId={hub.id} />}
-        {tab === "badges" && <Badges hubId={hub.id} on={!!hub.allow_user_flair} />}
+        {tab === "badges" && <Badges hubId={hub.id} />}
         {tab === "mods" && <Mods hubId={hub.id} />}
         {tab === "members" && <Members hubId={hub.id} isPrivate={hub.privacy === "private"} userFlair={!!hub.allow_user_flair} />}
         {tab === "queue" && <Queue hubId={hub.id} />}
@@ -175,7 +175,6 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <Toggle label="Crossposts" help="Posts here can be shared to other hubs." on={s.allow_crossposts} onChange={v => set("allow_crossposts", v)} />
           <Toggle label="Every post needs a prefix" on={s.flair_required} onChange={v => set("flair_required", v)} />
           <div className="field"><label htmlFor="pph">Posts per person an hour</label><input id="pph" type="number" min={1} max={1000} value={s.posts_per_hour} placeholder="No limit" onChange={e => set("posts_per_hour", e.target.value)} /></div>
-          <Toggle label="Badges" help="Members pick one of your badges, shown next to their name here. Make the list in Badges." on={s.allow_user_flair} onChange={v => set("allow_user_flair", v)} />
           <div className="field"><label htmlFor="ld">Clickable links in comments (one site per line)</label><textarea id="ld" value={s.link_domains} placeholder={"youtube.com\nwikipedia.org"} onChange={e => set("link_domains", e.target.value)} style={{ minHeight: 90 }} /></div>
         </>
       )}
@@ -558,7 +557,7 @@ function Notes({ hubId }: { hubId: number }) {
 }
 
 /** The badges members can pick from. */
-function Badges({ hubId, on }: { hubId: number; on: boolean }) {
+function Badges({ hubId }: { hubId: number }) {
   const sb = browserSupabase();
   const [items, reload] = useList<{ id: number; label: string; color: string }>(useCallback(() => sb.from("hub_badges").select("id,label,color").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
   const [label, setLabel] = useState("");
@@ -566,7 +565,7 @@ function Badges({ hubId, on }: { hubId: number; on: boolean }) {
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <p className="muted small" style={{ margin: 0 }}>{on ? "Members pick one of these from the hub's side column." : "Turn on Badges in Posting so members can pick these."}</p>
+      <p className="muted small" style={{ margin: 0 }}>Members pick one of these from the hub&apos;s side column. With none here, there&apos;s nothing to pick.</p>
       {items?.length === 0 && <p className="muted">No badges yet.</p>}
       {items?.map(b => (
         <Row key={b.id}>

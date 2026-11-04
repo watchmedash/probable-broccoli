@@ -68,7 +68,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
     hub && me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     hub && me ? sb.from("hub_bans").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     blockedIds(sb, me?.id),
-    hub?.allow_user_flair ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
+    hub ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
     sb.from("site_blocked_video_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     hubNames(sb),
   ]);

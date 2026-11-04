@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { errorMessage } from "@/lib/errors";
 import { browserSupabase } from "@/lib/supabase/client";
 import { Avatar } from "./Avatars";
@@ -9,42 +9,48 @@ import { useToast } from "./Toast";
 
 type Badge = { id: number; label: string; color: string };
 
-/** You as people see you in this hub, with the pen to pick one of the hub's badges. */
-export function BadgePicker({ hubId, me, current, badges }: {
-  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string } | null; badges: Badge[];
+/** You as people see you in this hub; the pen opens the hub's badges to pick from. */
+export function BadgePicker({ hubId, me, current, badges, joined }: {
+  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string } | null; badges: Badge[]; joined: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
   const router = useRouter();
   const toast = useToast();
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+  const picked = current ? badges.find(b => b.label === current.text && b.color === current.color)?.id ?? null : null;
   async function pick(badge: number | null) {
-    setOpen(false);
+    setBusy(true);
     const { error } = await browserSupabase().rpc("pick_badge", { hub: hubId, badge });
+    setBusy(false);
     if (error) return toast(errorMessage(error));
+    setOpen(false);
     router.refresh();
   }
   return (
-    <div ref={box} style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
-      <Avatar user={me} size={32} />
-      <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-        <b>u/{me.username}</b>
-        {current ? <span className="tag" style={{ background: current.color, color: "#fff", alignSelf: "flex-start" }}>{current.text}</span> : <span className="muted small">No badge</span>}
-      </span>
-      <button className="icon-btn" aria-label="Pick your badge" aria-expanded={open} onClick={() => setOpen(o => !o)}><Icon icon={I.edit} size={14} /></button>
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar user={me} size={32} />
+        <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
+          <span>{me.username}</span>
+          {current && <span className="tag" style={{ background: current.color, color: "#fff", alignSelf: "flex-start" }}>{current.text}</span>}
+        </span>
+        {joined && (
+          <button className="icon-btn" aria-label="Pick your badge" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+            <Icon icon={I.edit} size={14} />
+          </button>
+        )}
+      </div>
+      {!joined && <p className="muted small" style={{ margin: "10px 0 0" }}>Join the hub to pick a badge.</p>}
       {open && (
-        <div className="menu" style={{ top: 44, right: 0 }}>
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="muted small">Pick your badge for this hub</span>
           {badges.map(b => (
-            <button key={b.id} onClick={() => pick(b.id)}>
+            <label key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input type="radio" name={`badge-${hubId}`} checked={picked === b.id} disabled={busy} onChange={() => pick(b.id)} />
               <span className="tag" style={{ background: b.color, color: "#fff" }}>{b.label}</span>
-            </button>
+            </label>
           ))}
-          <button onClick={() => pick(null)} className="muted">No badge</button>
+          {current && <button className="linkish small" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => pick(null)}>Remove my badge</button>}
         </div>
       )}
     </div>

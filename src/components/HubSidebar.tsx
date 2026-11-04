@@ -10,16 +10,16 @@ import { Icon, I } from "./Icon";
 type Mod = { id: string; username: string; avatar_url: string | null; owner: boolean };
 
 /**
- * A hub's side column, on its page and on its posts: About, your badge, the rules, then the mods.
+ * A hub's side column, on its page and on its posts: the description, your badge, the rules, then the mods.
  * [withHeader] adds the hub's icon and name on top (on a post, where the page isn't the hub's own).
  */
 export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub: Hub; me: { id: string; username: string } | null; joined: boolean; withHeader?: boolean }) {
   const sb = await serverSupabase();
   const [mods, badges, mine, avatar] = await Promise.all([
     sb.rpc("hub_mod_list", { hub: hub.id }).then(r => (r.data ?? []) as Mod[]),
-    hub.allow_user_flair ? sb.from("hub_badges").select("id,label,color").eq("hub_id", hub.id).order("created_at").then(r => r.data ?? []) : Promise.resolve([]),
-    me && joined && hub.allow_user_flair ? sb.from("hub_user_flairs").select("text,color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data ?? null) : Promise.resolve(null),
-    me && joined && hub.allow_user_flair ? sb.from("profiles").select("avatar_url").eq("id", me.id).maybeSingle().then(r => r.data?.avatar_url ?? null) : Promise.resolve(null),
+    me ? sb.from("hub_badges").select("id,label,color").eq("hub_id", hub.id).order("created_at").then(r => r.data ?? []) : Promise.resolve([]),
+    me ? sb.from("hub_user_flairs").select("text,color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data ?? null) : Promise.resolve(null),
+    me ? sb.from("profiles").select("avatar_url").eq("id", me.id).maybeSingle().then(r => r.data?.avatar_url ?? null) : Promise.resolve(null),
   ]);
   const rules = hub.rules.split("\n").map(r => r.trim()).filter(Boolean);
   return (
@@ -31,7 +31,6 @@ export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub:
             <b>n/{hub.name}</b>
           </Link>
         )}
-        <h2>About</h2>
         <p style={{ margin: "0 0 10px" }}>{hub.description || "No description yet."}</p>
         {!!hub.categories?.length && <p className="muted small" style={{ margin: "0 0 10px" }}>{hub.categories.map(categoryLabel).join(", ")}</p>}
         {hub.member_count >= SHOW_MEMBERS_FROM && <p className="muted small" style={{ margin: "0 0 12px" }}>{countLabel(hub.member_count, "member")}</p>}
@@ -41,10 +40,10 @@ export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub:
           <Link href={`/n/${hub.name}/message-mods`} className="btn quiet block"><Icon icon={I.mail} size={14} /> Message mods</Link>
         )}
       </section>
-      {me && joined && hub.allow_user_flair && badges.length > 0 && (
+      {me && badges.length > 0 && (
         <section className="panel panel-pad">
-          <h2>Your badge</h2>
-          <BadgePicker hubId={hub.id} me={{ ...me, avatar_url: avatar }} current={mine} badges={badges} />
+          <h2>Badge</h2>
+          <BadgePicker hubId={hub.id} me={{ ...me, avatar_url: avatar }} current={mine} badges={badges} joined={joined} />
         </section>
       )}
       {rules.length > 0 && (
