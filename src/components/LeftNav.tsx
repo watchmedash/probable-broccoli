@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PLAY_URL } from "@/lib/config";
 import { favoriteHubIds, fetchHubs, myHubIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { HubIcon } from "./Avatars";
@@ -55,7 +56,7 @@ export async function LeftNav({ theme, ios }: { theme: string; ios: boolean }) {
         <Link href="/terms">Terms</Link>
         <Link href="/child-safety">Child safety</Link>
         <Link href="/delete-account">Delete account</Link>
-        {!ios && <a href="/download/nakodu.apk">Android app</a>}
+        {!ios && <a href={PLAY_URL}>Android app</a>}
         <ThemeSwitch initial={theme} />
       </div>
     </NavDrawer>

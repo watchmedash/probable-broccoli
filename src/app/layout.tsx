@@ -8,7 +8,7 @@ import { LeftNav } from "@/components/LeftNav";
 import { CollapseButton } from "@/components/NavParts";
 import { Spoilers } from "@/components/Spoilers";
 import { ToastProvider } from "@/components/Toast";
-import { ADSENSE_CLIENT, SITE_URL } from "@/lib/config";
+import { ADSENSE_CLIENT, PLAY_URL, SITE_URL } from "@/lib/config";
 
 // Roboto, the app's font, bundled with the site (variable weight, Latin).
 const roboto = localFont({ src: "./fonts/Roboto.woff2", weight: "100 900", variable: "--font-roboto", display: "swap" });
@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {android && (
             <div className="app-bar">
               <span>Nakodu is better in the app</span>
-              <a href="/download/nakodu.apk">Get it for Android</a>
+              <a href={PLAY_URL}>Get it on Google Play</a>
             </div>
           )}
           <Suspense>
