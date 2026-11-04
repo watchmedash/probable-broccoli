@@ -31,9 +31,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Switch({ label, help, on, onChange }: { label: string; help?: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="check" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+    <label className="check" style={{ alignItems: "flex-start", gap: 12 }}>
+      <input type="checkbox" checked={on} onChange={e => onChange(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--blue)", flex: "none", margin: "1px 0 0" }} />
       <span><span style={{ display: "block" }}>{label}</span>{help && <span className="muted small">{help}</span>}</span>
-      <input type="checkbox" checked={on} onChange={e => onChange(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--blue)", flex: "none" }} />
     </label>
   );
 }

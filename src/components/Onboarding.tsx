@@ -64,7 +64,7 @@ export function PickInterests() {
     router.refresh();
   }
   return (
-    <div className="form-page" style={{ maxWidth: 820 }}>
+    <div className="form-page" style={{ maxWidth: 820, width: "100%", boxSizing: "border-box" }}>
       <h1>What are you into?</h1>
       <p className="muted" style={{ margin: 0 }}>Pick at least 3. Hubs about them show up more in your home feed.</p>
       <CategoryPicker value={picked} onChange={setPicked} />
