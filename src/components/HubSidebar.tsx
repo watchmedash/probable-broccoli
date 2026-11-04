@@ -40,10 +40,10 @@ export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub:
           <Link href={`/n/${hub.name}/message-mods`} className="btn quiet block"><Icon icon={I.mail} size={14} /> Message mods</Link>
         )}
       </section>
-      {me && badges.length > 0 && (
+      {me && joined && badges.length > 0 && (
         <section className="panel panel-pad">
           <h2>Badge</h2>
-          <BadgePicker hubId={hub.id} me={{ ...me, avatar_url: avatar }} current={mine} badges={badges} joined={joined} />
+          <BadgePicker hubId={hub.id} me={{ ...me, avatar_url: avatar }} current={mine} badges={badges} />
         </section>
       )}
       {rules.length > 0 && (

@@ -10,8 +10,8 @@ import { useToast } from "./Toast";
 type Badge = { id: number; label: string; color: string };
 
 /** You as people see you in this hub; the pen opens the hub's badges to pick from. */
-export function BadgePicker({ hubId, me, current, badges, joined }: {
-  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string } | null; badges: Badge[]; joined: boolean;
+export function BadgePicker({ hubId, me, current, badges }: {
+  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string } | null; badges: Badge[];
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,13 +34,10 @@ export function BadgePicker({ hubId, me, current, badges, joined }: {
           <span>{me.username}</span>
           {current && <span className="tag" style={{ background: current.color, color: "#fff", alignSelf: "flex-start" }}>{current.text}</span>}
         </span>
-        {joined && (
-          <button className="icon-btn" aria-label="Pick your badge" aria-expanded={open} onClick={() => setOpen(o => !o)}>
-            <Icon icon={I.edit} size={14} />
-          </button>
-        )}
+        <button className="icon-btn" aria-label="Pick your badge" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+          <Icon icon={I.edit} size={14} />
+        </button>
       </div>
-      {!joined && <p className="muted small" style={{ margin: "10px 0 0" }}>Join the hub to pick a badge.</p>}
       {open && (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="muted small">Pick your badge for this hub</span>
