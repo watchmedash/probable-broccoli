@@ -22,7 +22,8 @@ import { blockedIds, fetchComments, fetchHubByName, fetchPost, hubAccess, hubNam
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { HeldNotice } from "@/components/HeldNotice";
-import { firstBodyImage, isImageUrl } from "@/lib/mdedit";
+import { firstBodyImage } from "@/lib/mdedit";
+import { SHARE_HEIGHT, SHARE_WIDTH, sharePicture } from "@/lib/sharePicture";
 import { firstVideo, isBlockedVideo, videoLink, withoutBareLink } from "@/lib/video";
 import { firstYouTube, youTubeId } from "@/lib/youtube";
 
@@ -38,13 +39,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!post) return { title: "Post not found" };
   const where = post.community ? `n/${post.community.name}` : `u/${post.author?.username ?? "deleted"}`;
   const description = plainText(post.body, 180) || `A post in ${where} on Nakodu.`;
-  // Link previews (Facebook, X, chats) show the post's own picture: its gallery or upload, a picture
-  // written or linked in the text, or a YouTube thumbnail. Spoilers and 18+ get the plain Nakodu card.
-  const covered = post.spoiler || post.mature;
-  const bare = post.body.match(/https:\/\/[^\s)\]]+/g)?.find(u => isImageUrl(u, true));
-  const yt = firstYouTube(post.body);
-  const picture = covered ? null : post.image_urls?.[0] ?? post.image_url ?? firstBodyImage(post.body) ?? bare ?? (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null);
-  const images = picture ? [{ url: picture }] : [{ url: "/img/og.png", width: 1024, height: 500 }];
+  // Link previews (Facebook, X, chats) get the post's own picture, served from Nakodu at a fixed size
+  // so they never show an empty box while someone else's host is slow or blocks them.
+  const images = sharePicture(post)
+    ? [{ url: `/p/${post.id}/picture`, width: SHARE_WIDTH, height: SHARE_HEIGHT, type: "image/jpeg" }]
+    : [{ url: "/img/og.png", width: 1024, height: 500 }];
   return {
     title: { absolute: post.title },
     description,
