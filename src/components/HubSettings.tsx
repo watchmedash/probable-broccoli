@@ -19,7 +19,7 @@ import { CategoryPicker } from "./CategoryPicker";
 
 // Colours a hub can pick, as in the app. Blues first; never orange.
 const COLORS = ["#2563EB", "#0EA5E9", "#4F46E5", "#7C3AED", "#0D9488", "#10B981", "#EC4899", "#64748B", "#B91C1C", "#F59E0B", "#8B5CF6"];
-type Tab = "general" | "posting" | "automod" | "prefixes" | "mods" | "members" | "queue" | "reports" | "reasons" | "notes" | "mail" | "log";
+type Tab = "general" | "posting" | "automod" | "prefixes" | "badges" | "mods" | "members" | "queue" | "reports" | "reasons" | "notes" | "mail" | "log";
 type Person = { id: string; username: string; avatar_url: string | null };
 const lines = (s: string) => s.split(/[\n,]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
 
@@ -29,6 +29,7 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
     ["posting", "Posting", access.canSettings],
     ["automod", "AutoMod", access.canSettings],
     ["prefixes", "Prefixes", access.canSettings],
+    ["badges", "Badges", access.canSettings],
     ["mods", "Mods", access.isOwner],
     ["members", "Members", access.canMembers],
     ["queue", "Queue", access.canRemove],
@@ -51,6 +52,7 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
       <div className="panel-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {(tab === "general" || tab === "posting" || tab === "automod") && <SettingsForm hub={hub} part={tab} admin={admin} />}
         {tab === "prefixes" && <Prefixes hubId={hub.id} />}
+        {tab === "badges" && <Badges hubId={hub.id} on={!!hub.allow_user_flair} />}
         {tab === "mods" && <Mods hubId={hub.id} />}
         {tab === "members" && <Members hubId={hub.id} isPrivate={hub.privacy === "private"} userFlair={!!hub.allow_user_flair} />}
         {tab === "queue" && <Queue hubId={hub.id} />}
@@ -93,7 +95,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
     automod_domains: (hub.automod_domains ?? []).join("\n"), automod_min_days: hub.automod_min_days ?? 0,
     filter_swearing: hub.filter_swearing ?? false, automod_min_sparks: hub.automod_min_sparks ?? 0,
     posts_per_hour: hub.posts_per_hour == null ? "" : String(hub.posts_per_hour),
-    categories: hub.categories ?? [], require_approval: hub.require_approval ?? false, allow_comment_images: hub.allow_comment_images ?? true,
+    unlisted: hub.unlisted ?? false, categories: hub.categories ?? [], require_approval: hub.require_approval ?? false, allow_comment_images: hub.allow_comment_images ?? true,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +158,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <div className="field"><label htmlFor="rules">Rules (one per line, shown as you write them)</label><textarea id="rules" value={s.rules} maxLength={2000} onChange={e => set("rules", e.target.value)} /></div>
           <Choice label="Who can see and join" value={s.privacy} options={[["public", "Public: anyone can join"], ["private", "Private: people ask to join"]]} onChange={v => set("privacy", v)} />
           <Toggle label="Only members see posts" on={s.members_only} onChange={v => set("members_only", v)} />
+          <Toggle label="Unlisted" help="Left out of hub lists and home feeds. Search and shared links still find it." on={s.unlisted} onChange={v => set("unlisted", v)} />
           <Toggle label="18+ hub" help="Only shown to adults who turned on 18+ hubs." on={s.is_mature} onChange={v => set("is_mature", v)} />
           {s.is_mature && <Toggle label="Filter swearing" help="Off: swearing is allowed here. Slurs are blocked everywhere either way." on={s.filter_swearing} onChange={v => set("filter_swearing", v)} />}
           <Toggle label="Archived" help="Read only: nothing new can be posted or commented." on={s.status === "archived"} onChange={v => set("status", v ? "archived" : "active")} />
@@ -172,7 +175,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
           <Toggle label="Crossposts" help="Posts here can be shared to other hubs." on={s.allow_crossposts} onChange={v => set("allow_crossposts", v)} />
           <Toggle label="Every post needs a prefix" on={s.flair_required} onChange={v => set("flair_required", v)} />
           <div className="field"><label htmlFor="pph">Posts per person an hour</label><input id="pph" type="number" min={1} max={1000} value={s.posts_per_hour} placeholder="No limit" onChange={e => set("posts_per_hour", e.target.value)} /></div>
-          <Toggle label="User flair" help="Mods can give members a short tag shown next to their name here." on={s.allow_user_flair} onChange={v => set("allow_user_flair", v)} />
+          <Toggle label="Badges" help="Members pick one of your badges, shown next to their name here. Make the list in Badges." on={s.allow_user_flair} onChange={v => set("allow_user_flair", v)} />
           <div className="field"><label htmlFor="ld">Clickable links in comments (one site per line)</label><textarea id="ld" value={s.link_domains} placeholder={"youtube.com\nwikipedia.org"} onChange={e => set("link_domains", e.target.value)} style={{ minHeight: 90 }} /></div>
         </>
       )}
@@ -335,7 +338,7 @@ function Members({ hubId, isPrivate, userFlair }: { hubId: number; isPrivate: bo
           <Avatar user={m.user} size={28} />
           <Link href={`/u/${m.user.username}`} style={{ flex: 1 }}>u/{m.user.username}</Link>
           {userFlair && (() => { const f = flairs?.find(x => x.user_id === m.user!.id); return f ? <span className="tag" style={{ background: f.color, color: "#fff" }}>{f.text}</span> : null; })()}
-          {userFlair && <button className="linkish small" onClick={() => setFlairFor(m.user)}>Set flair</button>}
+          {userFlair && <button className="linkish small" onClick={() => setFlairFor(m.user)}>Set badge</button>}
           <button className="linkish small" style={{ color: "var(--error)" }} onClick={() => act(sb.from("hub_members").delete().eq("hub_id", hubId).eq("user_id", m.user!.id), reloadMembers)}>Remove</button>
         </Row>
       ))}
@@ -368,8 +371,8 @@ export function FlairDialog({ hubId, user, current, onClose }: { hubId: number; 
   return (
     <div className="dialog-back" onClick={onClose}>
       <div className="dialog" role="dialog" aria-modal onClick={e => e.stopPropagation()}>
-        <h2>Flair for u/{user.username}</h2>
-        <input value={text} maxLength={40} onChange={e => setText(e.target.value)} placeholder="Flair text" style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" }} />
+        <h2>Badge for u/{user.username}</h2>
+        <input value={text} maxLength={40} onChange={e => setText(e.target.value)} placeholder="Badge" style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" }} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{COLORS.slice(0, 8).map(c => <button key={c} aria-label={c} onClick={() => setColor(c)} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: color === c ? "3px solid var(--ink)" : 0, cursor: "pointer" }} />)}</div>
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
         <div className="row">
@@ -550,6 +553,38 @@ function Notes({ hubId }: { hubId: number }) {
           <button className="linkish small" onClick={async () => { await sb.from("hub_user_notes").delete().eq("id", n.id); reload(); }}>Delete</button>
         </Row>
       ))}
+    </>
+  );
+}
+
+/** The badges members can pick from. */
+function Badges({ hubId, on }: { hubId: number; on: boolean }) {
+  const sb = browserSupabase();
+  const [items, reload] = useList<{ id: number; label: string; color: string }>(useCallback(() => sb.from("hub_badges").select("id,label,color").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
+  const [label, setLabel] = useState("");
+  const [color, setColor] = useState(COLORS[0]);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <p className="muted small" style={{ margin: 0 }}>{on ? "Members pick one of these from the hub's side column." : "Turn on Badges in Posting so members can pick these."}</p>
+      {items?.length === 0 && <p className="muted">No badges yet.</p>}
+      {items?.map(b => (
+        <Row key={b.id}>
+          <span className="tag" style={{ background: b.color, color: "#fff" }}>{b.label}</span>
+          <span style={{ flex: 1 }} />
+          <button className="linkish small" onClick={async () => { await sb.from("hub_badges").delete().eq("id", b.id); reload(); }}>Remove</button>
+        </Row>
+      ))}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input aria-label="Badge" placeholder="Badge, like Regular" value={label} maxLength={30} onChange={e => setLabel(e.target.value)} style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", flex: 1, minWidth: 160 }} />
+        <div style={{ display: "flex", gap: 6 }}>{COLORS.slice(0, 8).map(c => <button key={c} aria-label={c} onClick={() => setColor(c)} style={{ width: 24, height: 24, borderRadius: 4, background: c, border: color === c ? "3px solid var(--ink)" : 0, cursor: "pointer" }} />)}</div>
+        <button className="btn" disabled={!label.trim()} onClick={async () => {
+          const { error } = await sb.from("hub_badges").insert({ hub_id: hubId, label: label.trim(), color });
+          if (error) return setError(errorMessage(error));
+          setLabel(""); setError(null); reload();
+        }}>Add</button>
+      </div>
+      {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
     </>
   );
 }

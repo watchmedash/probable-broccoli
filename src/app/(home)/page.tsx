@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FeedList } from "@/components/FeedList";
 import { RecentPosts } from "@/components/RecentPosts";
 import { SortTabs } from "@/components/SortTabs";
-import { fetchHubPrefs, fetchPosts, fetchViewer, followingIds, hotOrder, interestHubIds, myHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
+import { fetchHubPrefs, fetchPosts, fetchViewer, followingIds, hotOrder, interestHubIds, unlistedHubIds, parseRange, parseSort, type FeedQuery, blockedIds } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 type Feed = "popular" | "all" | "following";
@@ -20,15 +20,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   if (feed === "popular") query = { sort: "top", range: "week", profiles: false };
   else if (users) query = { sort: "new", profiles: true };
   else query = { sort: parseSort(params.sort), range: parseRange(params.t), profiles: feed === "all" ? false : undefined };
+  // Following: just what the people you follow post, wherever they post it.
   if (feed === "following" && me) {
-    const [hubIds, peopleIds] = await Promise.all([myHubIds(sb, me.id), followingIds(sb, me.id)]);
-    query = { ...query, hubIds, peopleIds };
+    const peopleIds = await followingIds(sb, me.id);
+    query = { ...query, hubIds: [], peopleIds };
   }
-  const [blocked, viewer, prefs] = await Promise.all([blockedIds(sb, me?.id), fetchViewer(sb, me?.id), me ? fetchHubPrefs(sb, me.id) : Promise.resolve([])]);
-  query = { ...query, blocked };
+  const [blocked, viewer, prefs, unlisted] = await Promise.all([blockedIds(sb, me?.id), fetchViewer(sb, me?.id), me ? fetchHubPrefs(sb, me.id) : Promise.resolve([]), feed === "following" ? Promise.resolve([]) : unlistedHubIds(sb)]);
+  query = { ...query, blocked, ...(unlisted.length ? { muted: unlisted } : {}) };
   // Your bell choices shape the home feed: muted hubs stay out, and hubs left on Popular show what people liked or what's new.
   if (me && feed !== "following" && !users) {
-    query.muted = prefs.filter(p => p.level === "mute").map(p => p.hub_id);
+    query.muted = [...(query.muted ?? []), ...prefs.filter(p => p.level === "mute").map(p => p.hub_id)];
     if (feed === "all") {
       const since = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
       query.popular = { allHubs: prefs.filter(p => p.level === "all").map(p => p.hub_id), since };
@@ -61,11 +62,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           initial={page.posts}
           next={page.next}
           query={query}
-          showHub
+          showHub={feed !== "following"}
           signedIn={!!me}
           viewer={viewer}
           ads
-          empty={feed === "following" ? <>Join some hubs or follow people and their posts show up here. <Link href="/hubs" className="linkish">Find hubs</Link></> : users ? "Posts people make on their profiles show up here." : "Nothing here yet."}
+          empty={feed === "following" ? "Follow people and their posts show up here." : users ? "Posts people make on their profiles show up here." : "Nothing here yet."}
         />
       </div>
       <aside className="side"><RecentPosts /></aside>

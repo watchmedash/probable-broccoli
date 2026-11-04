@@ -26,12 +26,12 @@ export default async function HubsPage({ searchParams }: { searchParams: Promise
   ]);
   const cat = sp.cat ?? "";
   // Starred hubs lead each list.
-  const hubs = [...all].sort((a, b) => Number(favs.includes(b.id)) - Number(favs.includes(a.id)));
+  const hubs = [...all].filter(h => !h.unlisted || mine.includes(h.id)).sort((a, b) => Number(favs.includes(b.id)) - Number(favs.includes(a.id)));
   const joined = hubs.filter(h => mine.includes(h.id));
   const others = hubs.filter(h => !mine.includes(h.id));
   // New accounts have nothing joined, so they start on the other tab.
   const tab = !me || sp.tab === "all" || (sp.tab !== "joined" && joined.length === 0) ? "all" : "joined";
-  const shown = tab === "joined" ? joined : cat ? all.filter(h => h.categories?.includes(cat)) : others;
+  const shown = tab === "joined" ? joined : cat ? hubs.filter(h => h.categories?.includes(cat)) : others;
   // Discovery, on All hubs without a category picked: what matches your interests, then what's busy this week.
   const suggested = tab === "all" && !cat ? others.filter(h => h.categories?.some(c => interests.includes(c))).sort((a, b) => b.member_count - a.member_count).slice(0, 6) : [];
   const trending = tab === "all" && !cat ? trendingIds.map(id => all.find(h => h.id === id)).filter((h): h is Hub => !!h) : [];

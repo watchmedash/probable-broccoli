@@ -61,7 +61,7 @@ async function popularPosts(): Promise<RecentPost[]> {
   const columns = "id,title,created_at,score,comment_count,spoiler,mature,image_url,image_urls,community:communities!inner(name,color,icon_url,is_mature)";
   const since = new Date(Date.now() - 7 * 86400000).toISOString();
   const query = (recent: boolean) => {
-    let q = sb.from("posts").select(columns).eq("mature", false).eq("community.is_mature", false).order("score", { ascending: false }).order("created_at", { ascending: false }).limit(MAX);
+    let q = sb.from("posts").select(columns).eq("mature", false).eq("community.is_mature", false).eq("community.unlisted", false).eq("held", false).order("score", { ascending: false }).order("created_at", { ascending: false }).limit(MAX);
     if (recent) q = q.gte("created_at", since);
     return q;
   };
@@ -84,7 +84,7 @@ function Item({ p, signedIn }: { p: RecentPost; signedIn: boolean }) {
           <span>{timeAgo(p.created_at)}</span>
         </span>
         <span className="recent-title">{p.title}</span>
-        <span className="muted small">{p.score === 1 ? "1 upvote" : `${p.score} upvotes`}   {p.comments === 1 ? "1 comment" : `${p.comments} comments`}</span>
+        <span className="muted small">{p.score === 1 ? "1 upvote" : `${p.score} upvotes`}{p.comments > 0 && `   ${p.comments === 1 ? "1 comment" : `${p.comments} comments`}`}</span>
       </span>
       {p.image && (p.spoiler || p.mature ? (
         <span className="recent-cover">

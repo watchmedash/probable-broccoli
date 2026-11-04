@@ -6,6 +6,7 @@ import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { uploadImage } from "@/lib/upload";
 import type { Flair, Hub } from "@/lib/types";
+import { GalleryLink } from "./GalleryLink";
 import { Icon, I } from "./Icon";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -140,6 +141,7 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden disabled={uploading || gallery.length >= MAX_GALLERY} onChange={e => { addToGallery(e.target.files); e.target.value = ""; }} />
           </label>
         )}
+        {imagesAllowed && <GalleryLink disabled={gallery.length >= MAX_GALLERY} onAdd={u => setGallery(g => (g.includes(u) ? g : [...g, u]))} />}
         {pollsAllowed && <button className={`btn ${pollOn ? "" : "quiet"}`} onClick={() => setPollOn(p => !p)}>Poll</button>}
         <label className="check"><input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Spoiler</label>
         <label className="check"><input type="checkbox" checked={mature} onChange={e => setMature(e.target.checked)} /> 18+</label>

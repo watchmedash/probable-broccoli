@@ -5,6 +5,7 @@ import { useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { errorMessage } from "@/lib/errors";
 import { uploadImage } from "@/lib/upload";
+import { GalleryLink } from "./GalleryLink";
 import { Icon, I } from "./Icon";
 import { MarkdownEditor } from "./MarkdownEditor";
 
@@ -58,6 +59,7 @@ export function EditPost({ id, title: t0, body: b0, pictures: p0, imagesAllowed 
             <Icon icon={I.imageOutline} size={14} /> {uploading ? "Uploading..." : pictures.length ? `Gallery ${pictures.length}/${MAX_GALLERY}` : "Gallery"}
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden disabled={uploading || pictures.length >= MAX_GALLERY} onChange={e => { addToGallery(e.target.files); e.target.value = ""; }} />
           </label>
+          <GalleryLink disabled={pictures.length >= MAX_GALLERY} onAdd={u => setPictures(g => (g.includes(u) ? g : [...g, u]))} />
         </div>
       )}
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}

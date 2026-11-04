@@ -8,10 +8,8 @@ import { FeedList } from "@/components/FeedList";
 import { HubBell } from "@/components/HubBell";
 import { JoinButton } from "@/components/JoinButton";
 import { Icon, I } from "@/components/Icon";
-import { SelfFlair } from "@/components/SelfFlair";
+import { HubSidebar } from "@/components/HubSidebar";
 import { SortTabs } from "@/components/SortTabs";
-import { countLabel, SHOW_MEMBERS_FROM } from "@/lib/format";
-import { categoryLabel } from "@/lib/categories";
 import { fetchHubByName, fetchPosts, fetchViewer, parseRange, parseSort, blockedIds, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
@@ -52,9 +50,6 @@ export default async function HubPage({ params, searchParams }: { params: Promis
   ]);
   const joined = !!member?.data;
   const access = hubAccess(hub, me?.id ?? null, admin, team, joined, false);
-  const myFlair = me && joined && hub.allow_user_flair
-    ? (await sb.from("hub_user_flairs").select("text,color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle()).data ?? undefined
-    : undefined;
   const locked = (hub.privacy === "private" || hub.members_only) && !joined;
   const rules = hub.rules.split("\n").map(r => r.trim()).filter(Boolean);
 
@@ -94,21 +89,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
         )}
       </div>
       <aside className="side">
-        <section className="panel panel-pad">
-          <h2>About</h2>
-          <p style={{ margin: "0 0 10px" }}>{hub.description || "No description yet."}</p>
-          {!!hub.categories?.length && <p className="muted small" style={{ margin: "0 0 10px" }}>{hub.categories.map(categoryLabel).join(", ")}</p>}
-          {hub.member_count >= SHOW_MEMBERS_FROM && <p className="muted small" style={{ margin: "0 0 12px" }}>{countLabel(hub.member_count, "member")}</p>}
-          <Link href={`/n/${hub.name}/message-mods`} className="btn quiet block"><Icon icon={I.mail} size={14} /> Message mods</Link>
-          {me && joined && hub.allow_user_flair && <div style={{ marginTop: 8 }}><SelfFlair hubId={hub.id} me={me} current={myFlair} /></div>}
-        </section>
-        {rules.length > 0 && (
-          <section className="panel panel-pad">
-            <h2>Rules</h2>
-            {/* Exactly as the mods wrote them, numbers or not. */}
-            <ul className="rules">{rules.map((r, i) => <li key={i}>{r}</li>)}</ul>
-          </section>
-        )}
+        <HubSidebar hub={hub} me={me} joined={joined} />
       </aside>
     </main>
   );

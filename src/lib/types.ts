@@ -42,6 +42,8 @@ export type Hub = {
   /** Posts from anyone but the staff wait for a mod. */
   require_approval?: boolean;
   allow_comment_images?: boolean;
+  /** Left out of hub lists and home feeds; search and links still find it. */
+  unlisted?: boolean;
 };
 
 export type PollOption = { id: number; position: number; label: string; votes: number };

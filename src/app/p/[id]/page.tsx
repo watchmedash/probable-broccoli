@@ -17,7 +17,8 @@ import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
-import { blockedIds, fetchComments, fetchPost, hubAccess, hubNames, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
+import { HubSidebar } from "@/components/HubSidebar";
+import { blockedIds, fetchComments, fetchHubByName, fetchPost, hubAccess, hubNames, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
 import { HeldNotice } from "@/components/HeldNotice";
@@ -65,6 +66,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
     sb.from("site_blocked_video_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     hubNames(sb),
   ]);
+  const fullHub = hub ? await fetchHubByName(sb, hub.name) : null;
   const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
   const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
   const authorFlair = post.author ? userFlairs[post.author.id] : undefined;
@@ -194,15 +196,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
         />
       </div>
       <aside className="side">
-        {post.community && (
-          <section className="panel panel-pad">
-            <Link href={`/n/${post.community.name}`} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <HubIcon hub={post.community} size={40} />
-              <b>n/{post.community.name}</b>
-            </Link>
-            <Link href={`/n/${post.community.name}`} className="btn quiet block">Visit hub</Link>
-          </section>
-        )}
+        {fullHub && <HubSidebar hub={fullHub} me={me} joined={member} withHeader />}
         <RecentPosts />
       </aside>
       <RecordVisit post={{

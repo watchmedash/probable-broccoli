@@ -43,7 +43,7 @@ export async function LeftNav({ theme, ios }: { theme: string; ios: boolean }) {
         <nav className="nav-group" aria-label="Hubs">
           <span className="nav-title">Hubs</span>
           <NavMore limit={5}>
-            {[...hubs].sort((a, b) => b.member_count - a.member_count).map(h => (
+            {hubs.filter(h => !h.unlisted).sort((a, b) => b.member_count - a.member_count).map(h => (
               <NavLink key={h.id} href={`/n/${h.name}`} icon={<HubIcon hub={h} size={24} />} label={`n/${h.name}`} />
             ))}
           </NavMore>

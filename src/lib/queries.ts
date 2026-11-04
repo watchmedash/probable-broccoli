@@ -5,7 +5,7 @@ import type { Comment, Hub, Notification, Post, Profile } from "./types";
 
 // The same columns the Android app reads (data/Repositories.kt).
 export const HUB_COLUMNS =
-  "id,name,description,color,created_by,who_can_post,member_count,icon_url,banner_url,rules,privacy,status,who_can_comment,allow_images,allow_polls,is_mature,link_domains,flair_required,members_only,allow_crossposts,allow_user_flair,categories,require_approval,allow_comment_images";
+  "id,name,description,color,created_by,who_can_post,member_count,icon_url,banner_url,rules,privacy,status,who_can_comment,allow_images,allow_polls,is_mature,link_domains,flair_required,members_only,allow_crossposts,allow_user_flair,categories,require_approval,allow_comment_images,unlisted";
 const AUTHOR = "author:profiles!author_id(id,username,avatar_url)";
 const POST_BASE =
   `id,community_id,title,body,score,comment_count,created_at,edited_at,image_url,image_urls,pinned_at,locked,spoiler,mature,held,` +
@@ -195,6 +195,12 @@ export async function fetchProfile(sb: SupabaseClient, username: string): Promis
 export async function hubNames(sb: SupabaseClient): Promise<string[]> {
   const { data } = await sb.from("communities").select("name").limit(5000);
   return (data ?? []).map((r: { name: string }) => r.name);
+}
+
+/** Hubs left out of the home feeds and lists. */
+export async function unlistedHubIds(sb: SupabaseClient): Promise<number[]> {
+  const { data } = await sb.from("communities").select("id").eq("unlisted", true);
+  return (data ?? []).map((r: { id: number }) => r.id);
 }
 
 export async function myHubIds(sb: SupabaseClient, uid: string): Promise<number[]> {
