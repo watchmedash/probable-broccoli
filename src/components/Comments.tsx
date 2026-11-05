@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BadgeTag } from "./BadgeTag";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAutoGrow } from "@/lib/autogrow";
 import { useRouter } from "next/navigation";
@@ -52,14 +53,14 @@ type Ctx = {
   allowImages: boolean;
   /** Comments newer than your last visit. */
   fresh: Set<number>;
-  userFlairs: Record<string, { text: string; color: string }>;
+  userFlairs: Record<string, { text: string; color: string; text_color?: string }>;
   add: (c: Comment) => void;
   replace: (c: Comment) => void;
 };
 
 export function Comments({ postId, initial, signedIn, myId, opId = null, closed, allowedDomains, hubs = [], canRemove = false, blocked = [], userFlairs = {}, hubId = null, allowImages = true, focus = null }: {
   postId: number; initial: Comment[]; signedIn: boolean; myId: string | null; opId?: string | null; closed: boolean; allowedDomains: string[];
-  hubs?: string[]; canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string }>;
+  hubs?: string[]; canRemove?: boolean; blocked?: string[]; userFlairs?: Record<string, { text: string; color: string; text_color?: string }>;
   hubId?: number | null; allowImages?: boolean;
   /** A shared comment link: just that comment and its replies. */
   focus?: number | null;
@@ -279,7 +280,7 @@ function CommentItem({ node, top = false, depth, ctx }: { node: CommentNode; top
         )}
         <b>{c.deleted || !c.author ? "[deleted]" : c.author.username}</b>
         {isOp && !collapsed && <span className="op">OP</span>}
-        {flair && !c.deleted && !collapsed && <span className="tag" style={{ background: flair.color, color: "#fff" }}>{flair.text}</span>}
+        {flair && !c.deleted && !collapsed && <BadgeTag text={flair.text} color={flair.color} textColor={flair.text_color} />}
         <span>{timeAgo(c.created_at)}</span>
         {!collapsed && c.edited_at && !c.deleted && <span>edited</span>}
       </div>

@@ -17,8 +17,8 @@ export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub:
   const sb = await serverSupabase();
   const [mods, badges, mine, avatar] = await Promise.all([
     sb.rpc("hub_mod_list", { hub: hub.id }).then(r => (r.data ?? []) as Mod[]),
-    me ? sb.from("hub_badges").select("id,label,color").eq("hub_id", hub.id).order("created_at").then(r => r.data ?? []) : Promise.resolve([]),
-    me ? sb.from("hub_user_flairs").select("text,color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data ?? null) : Promise.resolve(null),
+    me ? sb.from("hub_badges").select("id,label,color,text_color").eq("hub_id", hub.id).order("created_at").then(r => r.data ?? []) : Promise.resolve([]),
+    me ? sb.from("hub_user_flairs").select("text,color,text_color").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data ?? null) : Promise.resolve(null),
     me ? sb.from("profiles").select("avatar_url").eq("id", me.id).maybeSingle().then(r => r.data?.avatar_url ?? null) : Promise.resolve(null),
   ]);
   const rules = hub.rules.split("\n").map(r => r.trim()).filter(Boolean);

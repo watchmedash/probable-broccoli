@@ -4,20 +4,21 @@ import { useState } from "react";
 import { errorMessage } from "@/lib/errors";
 import { browserSupabase } from "@/lib/supabase/client";
 import { Avatar } from "./Avatars";
+import { BadgeTag } from "./BadgeTag";
 import { Icon, I } from "./Icon";
 import { useToast } from "./Toast";
 
-type Badge = { id: number; label: string; color: string };
+type Badge = { id: number; label: string; color: string; text_color: string };
 
 /** You as people see you in this hub; the pen opens the hub's badges to pick from. */
 export function BadgePicker({ hubId, me, current, badges }: {
-  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string } | null; badges: Badge[];
+  hubId: number; me: { id: string; username: string; avatar_url: string | null }; current: { text: string; color: string; text_color: string } | null; badges: Badge[];
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const toast = useToast();
-  const picked = current ? badges.find(b => b.label === current.text && b.color === current.color)?.id ?? null : null;
+  const picked = current ? badges.find(b => b.label === current.text && b.color === current.color && b.text_color === current.text_color)?.id ?? null : null;
   async function pick(badge: number | null) {
     setBusy(true);
     const { error } = await browserSupabase().rpc("pick_badge", { hub: hubId, badge });
@@ -32,7 +33,7 @@ export function BadgePicker({ hubId, me, current, badges }: {
         <Avatar user={me} size={32} />
         <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
           <span>{me.username}</span>
-          {current && <span className="tag" style={{ background: current.color, color: "#fff", alignSelf: "flex-start" }}>{current.text}</span>}
+          {current && <BadgeTag text={current.text} color={current.color} textColor={current.text_color} style={{ alignSelf: "flex-start" }} />}
         </span>
         <button className="icon-btn" aria-label="Pick your badge" aria-expanded={open} onClick={() => setOpen(o => !o)}>
           <Icon icon={I.edit} size={14} />
@@ -44,7 +45,7 @@ export function BadgePicker({ hubId, me, current, badges }: {
           {badges.map(b => (
             <label key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="radio" name={`badge-${hubId}`} checked={picked === b.id} disabled={busy} onChange={() => pick(b.id)} />
-              <span className="tag" style={{ background: b.color, color: "#fff" }}>{b.label}</span>
+              <BadgeTag text={b.label} color={b.color} textColor={b.text_color} />
             </label>
           ))}
           {current && <button className="linkish small" style={{ alignSelf: "flex-start" }} disabled={busy} onClick={() => pick(null)}>Remove my badge</button>}

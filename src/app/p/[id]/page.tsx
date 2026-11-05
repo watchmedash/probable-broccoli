@@ -18,6 +18,7 @@ import { SITE_URL } from "@/lib/config";
 import { plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
 import { HubSidebar } from "@/components/HubSidebar";
+import { BadgeTag } from "@/components/BadgeTag";
 import { blockedIds, fetchComments, fetchHubByName, fetchPost, hubAccess, hubNames, hubTeam, isSiteAdmin, linkVideo } from "@/lib/queries";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 import { myVote } from "@/lib/types";
@@ -68,13 +69,13 @@ export default async function PostPage({ params, searchParams }: { params: Promi
     hub && me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     hub && me ? sb.from("hub_bans").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => !!r.data) : Promise.resolve(false),
     blockedIds(sb, me?.id),
-    hub ? sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
+    hub ? sb.from("hub_user_flairs").select("user_id,text,color,text_color").eq("hub_id", hub.id).then(r => r.data ?? []) : Promise.resolve([]),
     sb.from("site_blocked_video_domains").select("domain").then(r => (r.data ?? []).map((d: { domain: string }) => d.domain)),
     hubNames(sb),
   ]);
   const fullHub = hub ? await fetchHubByName(sb, hub.name) : null;
   const access = hubAccess(hub ? { created_by: hub.created_by, status: hub.status, privacy: hub.privacy, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment } : null, me?.id ?? null, admin, team, member, ban);
-  const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color }]));
+  const userFlairs = Object.fromEntries((flairRows as { user_id: string; text: string; color: string; text_color: string }[]).map(r => [r.user_id, { text: r.text, color: r.color, text_color: r.text_color }]));
   const authorFlair = post.author ? userFlairs[post.author.id] : undefined;
   // Comment links are clickable only for the sites the hub's mods (or, on profiles, the admins) allow.
   const allowed = post.community ? post.community.link_domains ?? [] : siteDomains ?? [];
@@ -133,7 +134,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
               {post.community && (
                 <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <Link href={`/u/${post.author?.username ?? ""}`} className="author small">{post.author ? `u/${post.author.username}` : "[deleted]"}</Link>
-                  {authorFlair && <span className="tag" style={{ background: authorFlair.color, color: "#fff" }}>{authorFlair.text}</span>}
+                  {authorFlair && <BadgeTag text={authorFlair.text} color={authorFlair.color} textColor={authorFlair.text_color} />}
                 </span>
               )}
             </div>

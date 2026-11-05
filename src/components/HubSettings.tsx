@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { BadgeTag, readableOn } from "./BadgeTag";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase/client";
@@ -312,7 +313,7 @@ function Members({ hubId, isPrivate, userFlair }: { hubId: number; isPrivate: bo
   const [members, reloadMembers] = useList<{ user: Person | null }>(useCallback(() => sb.from("hub_members").select("user:profiles!user_id(id,username,avatar_url)").eq("hub_id", hubId).order("joined_at"), [hubId, sb]));
   const [requests, reloadRequests] = useList<{ user: Person | null }>(useCallback(() => sb.from("hub_join_requests").select("user:profiles!user_id(id,username,avatar_url)").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
   const [bans, reloadBans] = useList<{ reason: string; user: Person | null }>(useCallback(() => sb.from("hub_bans").select("reason,user:profiles!user_id(id,username,avatar_url)").eq("hub_id", hubId).order("created_at", { ascending: false }), [hubId, sb]));
-  const [flairs, reloadFlairs] = useList<{ user_id: string; text: string; color: string }>(useCallback(() => sb.from("hub_user_flairs").select("user_id,text,color").eq("hub_id", hubId), [hubId, sb]));
+  const [flairs, reloadFlairs] = useList<{ user_id: string; text: string; color: string; text_color: string }>(useCallback(() => sb.from("hub_user_flairs").select("user_id,text,color,text_color").eq("hub_id", hubId), [hubId, sb]));
   const [flairFor, setFlairFor] = useState<Person | null>(null);
   const toast = useToast();
   const act = async (p: PromiseLike<{ error: unknown }>, after: () => void) => { const { error } = await p; if (error) toast(errorMessage(error)); after(); };
@@ -336,7 +337,7 @@ function Members({ hubId, isPrivate, userFlair }: { hubId: number; isPrivate: bo
         <Row key={m.user.id}>
           <Avatar user={m.user} size={28} />
           <Link href={`/u/${m.user.username}`} style={{ flex: 1 }}>u/{m.user.username}</Link>
-          {userFlair && (() => { const f = flairs?.find(x => x.user_id === m.user!.id); return f ? <span className="tag" style={{ background: f.color, color: "#fff" }}>{f.text}</span> : null; })()}
+          {userFlair && (() => { const f = flairs?.find(x => x.user_id === m.user!.id); return f ? <BadgeTag text={f.text} color={f.color} textColor={f.text_color} /> : null; })()}
           {userFlair && <button className="linkish small" onClick={() => setFlairFor(m.user)}>Set badge</button>}
           <button className="linkish small" style={{ color: "var(--error)" }} onClick={() => act(sb.from("hub_members").delete().eq("hub_id", hubId).eq("user_id", m.user!.id), reloadMembers)}>Remove</button>
         </Row>
@@ -362,31 +363,39 @@ function Members({ hubId, isPrivate, userFlair }: { hubId: number; isPrivate: bo
   );
 }
 
-export function FlairDialog({ hubId, user, current, onClose }: { hubId: number; user: Person; current?: { text: string; color: string }; onClose: () => void }) {
-  const [text, setText] = useState(current?.text ?? "");
-  const [color, setColor] = useState(current?.color ?? COLORS[0]);
-  const [error, setError] = useState<string | null>(null);
+/** A mod gives someone one of the hub's badges, or takes theirs away. */
+export function FlairDialog({ hubId, user, current, onClose }: { hubId: number; user: Person; current?: { text: string; color: string; text_color?: string }; onClose: () => void }) {
   const sb = browserSupabase();
+  const [badges] = useList<HubBadge>(useCallback(() => sb.from("hub_badges").select("id,label,color,text_color").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
+  const [error, setError] = useState<string | null>(null);
+  const same = (b: HubBadge) => !!current && b.label === current.text && b.color === current.color && b.text_color === (current.text_color ?? "#FFFFFF");
+  async function give(b: HubBadge) {
+    const { error } = await sb.from("hub_user_flairs").upsert({ hub_id: hubId, user_id: user.id, text: b.label, color: b.color, text_color: b.text_color }, { onConflict: "hub_id,user_id" });
+    if (error) return setError(errorMessage(error));
+    onClose();
+  }
   return (
     <div className="dialog-back" onClick={onClose}>
       <div className="dialog" role="dialog" aria-modal onClick={e => e.stopPropagation()}>
         <h2>Badge for u/{user.username}</h2>
-        <input value={text} maxLength={40} onChange={e => setText(e.target.value)} placeholder="Badge" style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)" }} />
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{COLORS.slice(0, 8).map(c => <button key={c} aria-label={c} onClick={() => setColor(c)} style={{ width: 26, height: 26, borderRadius: 6, background: c, border: color === c ? "3px solid var(--ink)" : 0, cursor: "pointer" }} />)}</div>
+        {badges?.length === 0 && <p className="muted" style={{ margin: 0 }}>This hub has no badges yet. Add some in the Badges tab.</p>}
+        {badges?.map(b => (
+          <label key={b.id} className="check" style={{ gap: 10 }}>
+            <input type="radio" name="give-badge" checked={same(b)} onChange={() => give(b)} />
+            <BadgeTag text={b.label} color={b.color} textColor={b.text_color} />
+          </label>
+        ))}
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
         <div className="row">
-          {current && <button className="btn quiet" onClick={async () => { await sb.from("hub_user_flairs").delete().eq("hub_id", hubId).eq("user_id", user.id); onClose(); }}>Clear</button>}
-          <button className="btn quiet" onClick={onClose}>Cancel</button>
-          <button className="btn" disabled={!text.trim()} onClick={async () => {
-            const { error } = await sb.from("hub_user_flairs").upsert({ hub_id: hubId, user_id: user.id, text: text.trim().slice(0, 40), color }, { onConflict: "hub_id,user_id" });
-            if (error) return setError(errorMessage(error));
-            onClose();
-          }}>Save</button>
+          {current && <button className="btn quiet" onClick={async () => { await sb.from("hub_user_flairs").delete().eq("hub_id", hubId).eq("user_id", user.id); onClose(); }}>Remove badge</button>}
+          <button className="btn quiet" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
   );
 }
+
+type HubBadge = { id: number; label: string; color: string; text_color: string };
 
 type ReportRow = {
   id: number; reason: string; details: string; created_at: string;
@@ -556,32 +565,55 @@ function Notes({ hubId }: { hubId: number }) {
   );
 }
 
-/** The badges members can pick from. */
+/** The badges members can pick from: any background colour, with white or black text. */
 function Badges({ hubId }: { hubId: number }) {
   const sb = browserSupabase();
-  const [items, reload] = useList<{ id: number; label: string; color: string }>(useCallback(() => sb.from("hub_badges").select("id,label,color").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
+  const [items, reload] = useList<HubBadge>(useCallback(() => sb.from("hub_badges").select("id,label,color,text_color").eq("hub_id", hubId).order("created_at"), [hubId, sb]));
   const [label, setLabel] = useState("");
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState("#2563EB");
+  const [hex, setHex] = useState("#2563EB");
+  const [textColor, setTextColor] = useState("#FFFFFF");
   const [error, setError] = useState<string | null>(null);
+  function pickColor(c: string) {
+    const v = c.toUpperCase();
+    setHex(v);
+    if (/^#[0-9A-F]{6}$/.test(v)) { setColor(v); setTextColor(readableOn(v)); }
+  }
   return (
     <>
       <p className="muted small" style={{ margin: 0 }}>Members pick one of these from the hub&apos;s side column. With none here, there&apos;s nothing to pick.</p>
       {items?.length === 0 && <p className="muted">No badges yet.</p>}
       {items?.map(b => (
         <Row key={b.id}>
-          <span className="tag" style={{ background: b.color, color: "#fff" }}>{b.label}</span>
+          <BadgeTag text={b.label} color={b.color} textColor={b.text_color} />
           <span style={{ flex: 1 }} />
           <button className="linkish small" onClick={async () => { await sb.from("hub_badges").delete().eq("id", b.id); reload(); }}>Remove</button>
         </Row>
       ))}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input aria-label="Badge" placeholder="Badge, like Regular" value={label} maxLength={30} onChange={e => setLabel(e.target.value)} style={{ height: 40, padding: "0 12px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", flex: 1, minWidth: 160 }} />
-        <div style={{ display: "flex", gap: 6 }}>{COLORS.slice(0, 8).map(c => <button key={c} aria-label={c} onClick={() => setColor(c)} style={{ width: 24, height: 24, borderRadius: 4, background: c, border: color === c ? "3px solid var(--ink)" : 0, cursor: "pointer" }} />)}</div>
+      <div className="field" style={{ marginTop: 8 }}>
+        <label htmlFor="badge-label">New badge</label>
+        <input id="badge-label" placeholder="Like Regular" value={label} maxLength={30} onChange={e => setLabel(e.target.value)} />
+      </div>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+        <label className="check" style={{ gap: 8 }}>
+          <span>Background</span>
+          <input type="color" aria-label="Background colour" value={color} onChange={e => pickColor(e.target.value)} style={{ width: 40, height: 32, padding: 0, border: "1px solid var(--outline)", borderRadius: 4, background: "none", cursor: "pointer" }} />
+          <input aria-label="Colour code" value={hex} maxLength={7} onChange={e => pickColor(e.target.value.startsWith("#") ? e.target.value : "#" + e.target.value)} style={{ width: 90, height: 32, padding: "0 8px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", fontFamily: "ui-monospace, Consolas, monospace" }} />
+        </label>
+        <span className="check" style={{ gap: 12 }}>
+          <span>Text</span>
+          <label className="check" style={{ gap: 6 }}><input type="radio" name="badge-text" checked={textColor === "#FFFFFF"} onChange={() => setTextColor("#FFFFFF")} />White</label>
+          <label className="check" style={{ gap: 6 }}><input type="radio" name="badge-text" checked={textColor === "#000000"} onChange={() => setTextColor("#000000")} />Black</label>
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <BadgeTag text={label.trim() || "Preview"} color={color} textColor={textColor} />
+        <span style={{ flex: 1 }} />
         <button className="btn" disabled={!label.trim()} onClick={async () => {
-          const { error } = await sb.from("hub_badges").insert({ hub_id: hubId, label: label.trim(), color });
+          const { error } = await sb.from("hub_badges").insert({ hub_id: hubId, label: label.trim(), color, text_color: textColor });
           if (error) return setError(errorMessage(error));
           setLabel(""); setError(null); reload();
-        }}>Add</button>
+        }}>Add badge</button>
       </div>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
     </>
