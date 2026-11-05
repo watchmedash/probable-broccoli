@@ -63,6 +63,8 @@ export type Post = {
   pinned_at: string | null;
   locked: boolean;
   spoiler: boolean;
+  /** When the post erases itself; null keeps it. */
+  expires_at?: string | null;
   mature: boolean;
   /** Waiting for a mod to approve it. */
   held?: boolean;

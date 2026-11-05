@@ -25,6 +25,8 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
   const [flair, setFlair] = useState<number | null>(null);
   const [spoiler, setSpoiler] = useState(false);
   const [mature, setMature] = useState(false);
+  // Hours until the post erases itself; 0 keeps it.
+  const [expiry, setExpiry] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -77,8 +79,9 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
       is_mature: mature,
       images: gallery.length > 1 ? gallery : null,
     });
+    if (error) { setBusy(false); return setError(errorMessage(error)); }
+    if (expiry) await browserSupabase().rpc("set_post_expiry", { post: data, hours: expiry });
     setBusy(false);
-    if (error) return setError(errorMessage(error));
     router.push(`/p/${data}`);
     router.refresh();
   }
@@ -145,6 +148,14 @@ export function CreatePost({ hubs, initialHub }: { hubs: Hub[]; initialHub: numb
         {pollsAllowed && <button className={`btn ${pollOn ? "" : "quiet"}`} onClick={() => setPollOn(p => !p)}>Poll</button>}
         <label className="check"><input type="checkbox" checked={spoiler} onChange={e => setSpoiler(e.target.checked)} /> Spoiler</label>
         <label className="check"><input type="checkbox" checked={mature} onChange={e => setMature(e.target.checked)} /> 18+</label>
+        <label className="check">
+          Erase
+          <select value={expiry} onChange={e => setExpiry(Number(e.target.value))} style={{ height: 32, padding: "0 6px", border: "1px solid var(--outline)", borderRadius: 4, background: "var(--surface)", color: "var(--ink)" }}>
+            <option value={0}>Never</option>
+            <option value={24}>In 24 hours</option>
+            <option value={168}>In 7 days</option>
+          </select>
+        </label>
       </div>
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       <button className="btn block" disabled={busy || uploading} onClick={submit}>{busy ? "Posting..." : "Post"}</button>

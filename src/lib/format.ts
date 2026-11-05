@@ -1,4 +1,13 @@
 /** "now", "15m", "10h", "3d", "4w", "1y": the app's short ages. */
+/** How long until an erasing post goes, like "Gone in 5h". */
+export function goneIn(iso: string, now: Date = new Date()): string {
+  const m = Math.max(0, (new Date(iso).getTime() - now.getTime()) / 60000);
+  if (m < 60) return `Gone in ${Math.max(1, Math.ceil(m))}m`;
+  const h = m / 60;
+  if (h < 24) return `Gone in ${Math.ceil(h)}h`;
+  return `Gone in ${Math.ceil(h / 24)}d`;
+}
+
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const s = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 1000);
   if (s < 60) return "now";

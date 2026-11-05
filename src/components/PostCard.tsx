@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Post } from "@/lib/types";
 import { myVote } from "@/lib/types";
-import { countLabel, timeAgo } from "@/lib/format";
+import { countLabel, goneIn, timeAgo } from "@/lib/format";
 import { guestOpens } from "@/lib/guestOpens";
 import { firstBodyImage } from "@/lib/mdedit";
 import { renderPreview } from "@/lib/markdown";
@@ -63,6 +63,7 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
           </Link>
         )}
         <span>{timeAgo(post.created_at)}</span>
+        {post.expires_at && <span className="muted" title="This post erases itself">{goneIn(post.expires_at)}</span>}
         {post.pinned_at && !showHub && <span className="tag pin"><Icon icon={I.pin} size={11} /> Pinned</span>}
         <span className="card-tools">
           {showHub && hub && !viewer?.hubs.includes(hub.id) && (

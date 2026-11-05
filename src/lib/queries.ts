@@ -8,7 +8,7 @@ export const HUB_COLUMNS =
   "id,name,description,color,created_by,who_can_post,member_count,icon_url,banner_url,rules,privacy,status,who_can_comment,allow_images,allow_polls,is_mature,link_domains,flair_required,members_only,allow_crossposts,allow_user_flair,categories,require_approval,allow_comment_images,unlisted";
 const AUTHOR = "author:profiles!author_id(id,username,avatar_url)";
 const POST_BASE =
-  `id,community_id,title,body,score,comment_count,created_at,edited_at,image_url,image_urls,pinned_at,locked,spoiler,mature,held,` +
+  `id,community_id,title,body,score,comment_count,created_at,edited_at,image_url,image_urls,pinned_at,locked,spoiler,mature,held,expires_at,` +
   `community:communities(id,name,color,icon_url,is_mature,link_domains,status,who_can_comment,allow_crossposts,created_by,privacy,who_can_post,allow_user_flair,allow_comment_images),${AUTHOR},` +
   `poll:poll_options(id,position,label,votes),flair:hub_flairs(id,label,color),` +
   // The post a crosspost shares (null when guests can't see it, or it was removed).

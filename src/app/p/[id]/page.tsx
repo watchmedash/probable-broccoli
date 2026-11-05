@@ -15,7 +15,7 @@ import { RecentPosts, RecordVisit } from "@/components/RecentPosts";
 import { PostMenu } from "@/components/PostMenu";
 import { ShareButton, Votes } from "@/components/VoteBar";
 import { SITE_URL } from "@/lib/config";
-import { plainText, timeAgo } from "@/lib/format";
+import { goneIn, plainText, timeAgo } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
 import { HubSidebar } from "@/components/HubSidebar";
 import { BadgeTag } from "@/components/BadgeTag";
@@ -129,6 +129,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
                   <Link href={`/u/${post.author?.username ?? ""}`} className="hub-name">{post.author ? `u/${post.author.username}` : "[deleted]"}</Link>
                 )}
                 <span>{timeAgo(post.created_at)}</span>
+                {post.expires_at && <span className="muted" title="This post erases itself">{goneIn(post.expires_at)}</span>}
                 {post.edited_at && <span>edited</span>}
               </span>
               {post.community && (
