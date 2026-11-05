@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAutoGrow } from "@/lib/autogrow";
 import { uploadImage } from "@/lib/upload";
 import { Lightbox } from "./Lightbox";
@@ -43,8 +43,22 @@ export function MessageList({ messages, isMine, label, above, below, menu, hubs,
   corner?: (m: Msg) => React.ReactNode;
 }) {
   const list = useRef<HTMLDivElement>(null);
-  // Scrolls this list only, so the page and the message box stay where they are.
-  useEffect(() => { if (list.current) list.current.scrollTop = list.current.scrollHeight; }, [messages.length]);
+  // Opens on the latest message and stays there as new ones arrive and pictures finish loading,
+  // unless you scrolled up to read. Scrolls this list only, so the page and the message box stay put.
+  const stick = useRef(true);
+  const toBottom = () => { if (stick.current && list.current) list.current.scrollTop = list.current.scrollHeight; };
+  useLayoutEffect(toBottom, [messages.length]);
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const onScroll = () => { stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; };
+    const onLoad = () => toBottom();
+    el.addEventListener("scroll", onScroll);
+    el.addEventListener("load", onLoad, true);
+    const grow = new ResizeObserver(toBottom);
+    grow.observe(el);
+    return () => { el.removeEventListener("scroll", onScroll); el.removeEventListener("load", onLoad, true); grow.disconnect(); };
+  }, []);
   return (
     <Lightbox>
     <div ref={list} className="chat-list">

@@ -4,6 +4,7 @@ import { Icon, I } from "./Icon";
 import { unreadMessages } from "@/lib/messages";
 import { UserMenu, SearchBox, SearchIconLink } from "./HeaderParts";
 import { MenuButton } from "./NavParts";
+import { LiveBadges } from "./LiveBadges";
 
 export async function Header() {
   const me = await currentUser();
@@ -34,14 +35,7 @@ export async function Header() {
           {me ? (
             <>
               <Link href="/submit" className="icon-btn" aria-label="Create a post"><Icon icon={I.plus} size={18} /></Link>
-              <Link href="/messages" className="icon-btn" aria-label={unreadChats ? `Messages, ${unreadChats} new` : "Messages"}>
-                <Icon icon={I.mail} size={18} />
-                {unreadChats > 0 && <span className="badge">{unreadChats > 99 ? "99+" : unreadChats}</span>}
-              </Link>
-              <Link href="/notifications" className="icon-btn" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}>
-                <Icon icon={I.bell} size={18} />
-                {unread > 0 && <span className="badge">{unread > 99 ? "99+" : unread}</span>}
-              </Link>
+              <LiveBadges meId={me.id} chats={unreadChats} notes={unread} />
               <UserMenu username={me.username} avatar={avatar} />
             </>
           ) : (

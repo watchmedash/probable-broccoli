@@ -61,6 +61,7 @@ export async function HubSidebar({ hub, me, joined, withHeader = false }: { hub:
               <Link key={m.id} href={`/u/${m.username}`} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Avatar user={m} size={26} />
                 <span>u/{m.username}</span>
+                {m.owner && <span className="muted small">owner</span>}
               </Link>
             ))}
           </div>

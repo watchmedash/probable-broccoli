@@ -57,8 +57,8 @@ function FilePlayer({ url, hls }: { url: string; hls: boolean }) {
 }
 
 /**
- * A linked video, loaded only when tapped. Files use the browser's player. Other pages
- * run sandboxed: without allow-popups or allow-top-navigation they can't open ads or send you elsewhere.
+ * A linked video, loaded only when tapped. Files use the browser's player; other pages play in a
+ * frame. (The Android app keeps its frames sandboxed; on the web they play as the site intends.)
  */
 export function VideoPlayer({ video, title, poster, playInline }: { video: VideoLink; title?: string; poster?: string | null; playInline: boolean }) {
   const [playing, setPlaying] = useState(false);
@@ -66,7 +66,7 @@ export function VideoPlayer({ video, title, poster, playInline }: { video: Video
   if (playing) {
     return (
       <div className="yt">
-        <iframe src={video.url} title={title ?? "Video"} sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="no-referrer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+        <iframe src={video.url} title={title ?? "Video"} referrerPolicy="no-referrer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
       </div>
     );
   }
