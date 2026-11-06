@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { VideoLink } from "@/lib/video";
 import { Icon, I } from "./Icon";
+import "video.js/dist/video-js.css";
 
 /** Spoilers and 18+ posts stay blurred until the eye is tapped. */
 export function Covered({ spoiler, mature, children }: { spoiler: boolean; mature: boolean; children: React.ReactNode }) {
@@ -28,7 +29,40 @@ const PlayMark = () => (
   </div>
 );
 
-/** A video file: plain browser video, no scripts from anywhere else, so no ads or popups. */
+/** An .mp4 or .webm link in Video.js, fetched only once play is pressed. */
+function DirectPlayer({ url }: { url: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const host = box.current;
+    if (!host) return;
+    let player: { dispose: () => void } | null = null;
+    let live = true;
+    import("video.js").then(({ default: videojs }) => {
+      if (!live) return;
+      // Video.js takes over the element it's given, so it gets one of its own that React doesn't manage.
+      const el = document.createElement("video-js");
+      el.className = "vjs-big-play-centered";
+      el.setAttribute("playsinline", "");
+      host.appendChild(el);
+      const p = videojs(el, {
+        controls: true,
+        autoplay: true,
+        fill: true,
+        preload: "auto",
+        playbackRates: [0.5, 1, 1.25, 1.5, 2],
+        sources: [{ src: url, type: /\.webm(\?|$)/i.test(url) ? "video/webm" : "video/mp4" }],
+      });
+      p.on("error", () => setFailed(true));
+      player = p;
+    }).catch(() => setFailed(true));
+    return () => { live = false; player?.dispose(); };
+  }, [url]);
+  if (failed) return <p className="muted small">This video can&apos;t play here. <a href={url} target="_blank" rel="nofollow ugc noopener" className="linkish">Open it</a></p>;
+  return <div className="yt" ref={box} />;
+}
+
+/** A stream (.m3u8): plain browser video, no scripts from anywhere else, so no ads or popups. */
 function FilePlayer({ url, hls }: { url: string; hls: boolean }) {
   const el = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -62,7 +96,7 @@ function FilePlayer({ url, hls }: { url: string; hls: boolean }) {
  */
 export function VideoPlayer({ video, title, poster, playInline }: { video: VideoLink; title?: string; poster?: string | null; playInline: boolean }) {
   const [playing, setPlaying] = useState(false);
-  if (playing && video.kind === "file") return <FilePlayer url={video.url} hls={video.hls} />;
+  if (playing && video.kind === "file") return video.hls ? <FilePlayer url={video.url} hls /> : <DirectPlayer url={video.url} />;
   if (playing) {
     return (
       <div className="yt">

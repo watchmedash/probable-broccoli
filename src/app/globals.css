@@ -442,3 +442,7 @@ select, .field select { appearance: none; -webkit-appearance: none; padding-righ
 .crop-ring { position: absolute; inset: 0; box-shadow: 0 0 0 999px rgba(0,0,0,.5); pointer-events: none; }
 .crop-dialog input[type="range"] { width: 100%; accent-color: var(--blue); }
 .hubs-section { margin: 0; padding: 14px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--line); }
+/* Video.js for direct video links: the site's blue on the progress bar and volume. */
+.yt .video-js { position: absolute; inset: 0; width: 100%; height: 100%; font-family: inherit; }
+.yt .video-js .vjs-play-progress, .yt .video-js .vjs-volume-level { background: var(--blue); }
+.yt .video-js .vjs-big-play-button { border: 0; border-radius: 12px; background: rgba(0,0,0,.75); }
