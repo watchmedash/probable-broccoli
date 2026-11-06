@@ -42,7 +42,8 @@ export function PostCard({ post, showHub, signedIn, viewer }: { post: Post; show
   const video = images.length === 0 && !yt ? firstVideo(post.body) : null;
   // No picture or player: the first link gets a card below. If its page holds a video that plays, the link's text goes.
   const firstLink = images.length === 0 && !yt && !video ? post.body.match(/https?:\/\/[^\s)\]]+/)?.[0] ?? null : null;
-  const previewText = yt || video ? post.body.replace(/https?:\/\/\S+/g, "") : firstLink && linkPlays ? withoutBareLink(post.body, firstLink) : post.body;
+  // Bare links go (the player shows them); a link written as [words](url) stays.
+  const previewText = yt || video ? post.body.replace(/(^|\s)https?:\/\/\S+(?=\s|$)/g, "$1") : firstLink && linkPlays ? withoutBareLink(post.body, firstLink) : post.body;
   const preview = previewText.trim() ? renderPreview(previewText) : "";
   const hub = post.community;
   const owner = !!viewer && (viewer.admin || hub?.created_by === viewer.id);
