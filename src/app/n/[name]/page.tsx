@@ -10,7 +10,8 @@ import { JoinButton } from "@/components/JoinButton";
 import { Icon, I } from "@/components/Icon";
 import { HubSidebar } from "@/components/HubSidebar";
 import { SortTabs } from "@/components/SortTabs";
-import { fetchHubByName, fetchPosts, fetchViewer, parseRange, parseSort, blockedIds, hubAccess, hubTeam, isSiteAdmin } from "@/lib/queries";
+import { fetchHubByName, fetchPosts, fetchViewer, parseRange, parseSort, blockedIds, hubAccess, hubTeam, isSiteAdmin, seesMature } from "@/lib/queries";
+import { MatureGate } from "@/components/MatureGate";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
 const load = cache(async (name: string) => {
@@ -39,7 +40,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
   const sort = parseSort(sp.sort);
   const range = parseRange(sp.t);
   const blocked = await blockedIds(sb, me?.id);
-  const [page, member, request, admin, team, viewer, pref] = await Promise.all([
+  const [page, member, request, admin, team, viewer, pref, mature] = await Promise.all([
     fetchPosts(sb, { sort, range, hubId: hub.id, blocked }, !!me),
     me ? sb.from("hub_members").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
     me && hub.privacy === "private" ? sb.from("hub_join_requests").select("hub_id").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle() : null,
@@ -47,6 +48,7 @@ export default async function HubPage({ params, searchParams }: { params: Promis
     me ? hubTeam(sb, hub.id) : Promise.resolve([]),
     fetchViewer(sb, me?.id),
     me ? sb.from("hub_prefs").select("level").eq("hub_id", hub.id).eq("user_id", me.id).maybeSingle().then(r => r.data?.level as "all" | "mute" | undefined) : Promise.resolve(undefined),
+    hub.is_mature ? seesMature(sb, me?.id) : Promise.resolve(true),
   ]);
   const joined = !!member?.data;
   const access = hubAccess(hub, me?.id ?? null, admin, team, joined, false);
@@ -82,7 +84,9 @@ export default async function HubPage({ params, searchParams }: { params: Promis
           )}
         </header>
         <SortTabs base={`/n/${hub.name}`} sort={sort} range={range} />
-        {locked && page.posts.length === 0 ? (
+        {!mature && !access.isStaff ? (
+          <MatureGate />
+        ) : locked && page.posts.length === 0 ? (
           <div className="empty">{hub.privacy === "private" ? "This hub is private. Ask to join to see its posts." : "Only members see posts here. Join to read them."}</div>
         ) : (
           <FeedList initial={page.posts} next={page.next} query={{ sort, range, hubId: hub.id, blocked }} showHub={false} signedIn={!!me} viewer={viewer} empty="No posts here yet." ads={!hub.is_mature} />

@@ -18,5 +18,5 @@ export default async function HubSettingsPage({ params, searchParams }: { params
   const [admin, team] = await Promise.all([isSiteAdmin(sb, me.id), hubTeam(sb, hub.id)]);
   const access = hubAccess(hub, me.id, admin, team, true, false);
   if (!access.isStaff) redirect(`/n/${hub.name}`);
-  return <main className="page single"><HubSettings hub={hub} access={access} admin={admin} initialTab={sp.tab} /></main>;
+  return <main className="page single"><HubSettings hub={hub} access={access} initialTab={sp.tab} /></main>;
 }

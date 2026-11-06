@@ -203,6 +203,17 @@ export async function unlistedHubIds(sb: SupabaseClient): Promise<number[]> {
   return (data ?? []).map((r: { id: number }) => r.id);
 }
 
+/** "Show 18+ hubs" is on and the birthday says 18 or older. Adults find 18+ hubs in search either way. */
+export async function seesMature(sb: SupabaseClient, uid: string | null | undefined): Promise<boolean> {
+  if (!uid) return false;
+  const { data } = await sb.from("user_settings").select("show_mature,birth_date").eq("user_id", uid).maybeSingle();
+  if (!data?.show_mature || !data.birth_date) return false;
+  const born = new Date(data.birth_date as string);
+  const now = new Date();
+  const age = now.getFullYear() - born.getFullYear() - (now < new Date(now.getFullYear(), born.getMonth(), born.getDate()) ? 1 : 0);
+  return age >= 18;
+}
+
 export async function myHubIds(sb: SupabaseClient, uid: string): Promise<number[]> {
   const { data } = await sb.from("hub_members").select("hub_id").eq("user_id", uid);
   return (data ?? []).map((r: { hub_id: number }) => r.hub_id);

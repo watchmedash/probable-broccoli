@@ -6,7 +6,7 @@ import { JoinButton } from "@/components/JoinButton";
 import { FavoriteStar } from "@/components/FavoriteStar";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { categoryLabel } from "@/lib/categories";
-import { favoriteHubIds, fetchHubs, myHubIds } from "@/lib/queries";
+import { favoriteHubIds, fetchHubs, myHubIds, seesMature } from "@/lib/queries";
 import type { Hub } from "@/lib/types";
 import { currentUser, serverSupabase } from "@/lib/supabase/server";
 
@@ -17,13 +17,16 @@ export default async function HubsPage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const me = await currentUser();
   const sb = await serverSupabase();
-  const [all, mine, favs, trendingIds, interests] = await Promise.all([
+  const [everyHub, mine, favs, trendingIds, interests, mature] = await Promise.all([
     fetchHubs(sb),
     me ? myHubIds(sb, me.id) : Promise.resolve([] as number[]),
     me ? favoriteHubIds(sb, me.id) : Promise.resolve([] as number[]),
     sb.rpc("trending_hubs", { max_hubs: 6 }).then(r => (r.data ?? []) as number[]),
     me ? sb.from("user_interests").select("category").eq("user_id", me.id).then(r => (r.data ?? []).map((x: { category: string }) => x.category)) : Promise.resolve([] as string[]),
+    seesMature(sb, me?.id),
   ]);
+  // 18+ hubs are listed only with "Show 18+ hubs" on (or once joined); adults still find them in search.
+  const all = everyHub.filter(h => !h.is_mature || mature || mine.includes(h.id));
   const cat = sp.cat ?? "";
   // Starred hubs lead each list.
   const hubs = [...all].filter(h => !h.unlisted || mine.includes(h.id)).sort((a, b) => Number(favs.includes(b.id)) - Number(favs.includes(a.id)));

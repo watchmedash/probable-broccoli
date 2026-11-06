@@ -24,7 +24,7 @@ type Tab = "general" | "posting" | "automod" | "prefixes" | "badges" | "mods" | 
 type Person = { id: string; username: string; avatar_url: string | null };
 const lines = (s: string) => s.split(/[\n,]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
 
-export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; access: Access; admin: boolean; initialTab?: string }) {
+export function HubSettings({ hub, access, initialTab }: { hub: Hub; access: Access; initialTab?: string }) {
   const tabs: [Tab, string, boolean][] = [
     ["general", "General", access.canSettings],
     ["posting", "Posting", access.canSettings],
@@ -51,7 +51,7 @@ export function HubSettings({ hub, access, admin, initialTab }: { hub: Hub; acce
       </div>
       <nav className="tabs">{visible.map(([t, label]) => <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{label}</button>)}</nav>
       <div className="panel-pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {(tab === "general" || tab === "posting" || tab === "automod") && <SettingsForm hub={hub} part={tab} admin={admin} />}
+        {(tab === "general" || tab === "posting" || tab === "automod") && <SettingsForm hub={hub} part={tab} owner={access.isOwner} />}
         {tab === "prefixes" && <Prefixes hubId={hub.id} />}
         {tab === "badges" && <Badges hubId={hub.id} />}
         {tab === "mods" && <Mods hubId={hub.id} />}
@@ -86,7 +86,7 @@ function Choice({ label, value, options, onChange }: { label: string; value: str
 }
 
 /** General, Posting and AutoMod share one form: the app saves every setting together. */
-function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posting" | "automod"; admin: boolean }) {
+function SettingsForm({ hub, part, owner }: { hub: Hub; part: "general" | "posting" | "automod"; owner: boolean }) {
   const [s, setS] = useState({
     description: hub.description, rules: hub.rules, icon_url: hub.icon_url, banner_url: hub.banner_url,
     privacy: hub.privacy, status: hub.status, who_can_post: hub.who_can_post, who_can_comment: hub.who_can_comment,
@@ -190,7 +190,7 @@ function SettingsForm({ hub, part, admin }: { hub: Hub; part: "general" | "posti
       )}
       {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       <button className="btn" onClick={save} disabled={busy} style={{ alignSelf: "flex-start" }}>{busy ? "Saving..." : "Save changes"}</button>
-      {part === "general" && admin && (
+      {part === "general" && owner && (
         <>
           <hr style={{ border: 0, borderTop: "1px solid var(--line)", width: "100%" }} />
           <button className="btn danger" style={{ alignSelf: "flex-start" }} onClick={() => setDeleting(true)}>Delete this hub</button>
