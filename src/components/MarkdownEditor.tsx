@@ -2,14 +2,16 @@
 import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
   faAlignCenter, faAlignLeft, faAlignRight, faBold, faCode, faDownload, faEyeSlash, faItalic, faLink, faListOl, faListUl,
-  faPalette, faQuoteLeft, faStrikethrough, faUnderline,
+  faChevronDown, faPalette, faQuoteLeft, faStrikethrough, faUnderline,
 } from "@fortawesome/free-solid-svg-icons";
 import { useLayoutEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/errors";
 import { renderMarkdown, TEXT_COLORS } from "@/lib/markdown";
-import { downloadMarkdown, headingAt, imageMarkdown, isImageUrl, linePrefix, setAlign, setHeading, wrapSelection, wrapWith, type Edit } from "@/lib/mdedit";
+import { alignAt, cycleAlign, downloadMarkdown, headingAt, imageMarkdown, isImageUrl, linePrefix, setHeading, wrapSelection, wrapWith, type Align, type Edit } from "@/lib/mdedit";
 import { uploadImage } from "@/lib/upload";
 import { Icon, I } from "./Icon";
+
+const STYLES = ["Paragraph", "Heading 1", "Heading 2", "Heading 3"];
 
 /**
  * Post text with formatting buttons. Pictures go in where the cursor is: pick a file, give an address,
@@ -26,6 +28,9 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
   const [asking, setAsking] = useState<"image" | "download" | null>(null);
   const [colors, setColors] = useState(false);
   const [level, setLevel] = useState(0);
+  const [styleMenu, setStyleMenu] = useState(false);
+  // What the cursor's line looks like, for the paragraph menu's label and the alignment button's icon.
+  const [align, setAlign] = useState<Align>("left");
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -87,23 +92,31 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
         <div className="md-tools">
           {!preview && (
             <>
-              <select
-                className="md-style"
-                aria-label="Paragraph style"
-                value={level}
-                onChange={e => { const n = Number(e.target.value); setLevel(n); apply((t, s, end) => setHeading(t, s, end, n)); }}
-              >
-                <option value={0}>Paragraph</option>
-                <option value={1}>Heading 1</option>
-                <option value={2}>Heading 2</option>
-                <option value={3}>Heading 3</option>
-              </select>
+              <span className="md-colors">
+                <button type="button" className="md-style" aria-haspopup="menu" aria-expanded={styleMenu}
+                  onMouseDown={e => e.preventDefault()} onClick={() => { setStyleMenu(o => !o); setColors(false); }}>
+                  {STYLES[level]}
+                  <Icon icon={faChevronDown} size={10} />
+                </button>
+                {styleMenu && (
+                  <span className="md-menu" role="menu">
+                    {STYLES.map((name, n) => (
+                      <button key={name} type="button" role="menuitemradio" aria-checked={level === n}
+                        className={`md-menu-item md-h${n}${level === n ? " on" : ""}`}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setStyleMenu(false); setLevel(n); apply((t, s, end) => setHeading(t, s, end, n)); }}>
+                        {name}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
               {tool(faBold, "Bold", () => apply((t, s, e) => wrapSelection(t, s, e, "**")))}
               {tool(faItalic, "Italic", () => apply((t, s, e) => wrapSelection(t, s, e, "*")))}
               {tool(faUnderline, "Underline", () => apply((t, s, e) => wrapWith(t, s, e, "[u]", "[/u]")))}
               {tool(faStrikethrough, "Strikethrough", () => apply((t, s, e) => wrapSelection(t, s, e, "~~")))}
               <span className="md-colors">
-                {tool(faPalette, "Text colour", () => setColors(c => !c))}
+                {tool(faPalette, "Text colour", () => { setColors(c => !c); setStyleMenu(false); })}
                 {colors && (
                   <span className="md-swatches" role="menu">
                     {TEXT_COLORS.map(c => (
@@ -115,9 +128,12 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
                 )}
               </span>
               {tool(faEyeSlash, "Spoiler", () => apply((t, s, e) => wrapWith(t, s, e, ">!", "!<")))}
-              {tool(faAlignLeft, "Align left", () => apply((t, s, e) => setAlign(t, s, e, "left")))}
-              {tool(faAlignCenter, "Align center", () => apply((t, s, e) => setAlign(t, s, e, "center")))}
-              {tool(faAlignRight, "Align right", () => apply((t, s, e) => setAlign(t, s, e, "right")))}
+              {/* One button: each press moves the selected lines left, center, right, and round again. */}
+              {tool(align === "center" ? faAlignCenter : align === "right" ? faAlignRight : faAlignLeft, `Alignment: ${align}`, () => apply((t, s, e) => {
+                const next = cycleAlign(t, s, e);
+                setAlign(alignAt(next.text, next.start));
+                return next;
+              }))}
               {tool(faQuoteLeft, "Quote", () => apply((t, s, e) => linePrefix(t, s, e, "> ")))}
               {tool(faListUl, "List", () => apply((t, s, e) => linePrefix(t, s, e, "- ")))}
               {tool(faListOl, "Numbered list", () => apply((t, s, e) => linePrefix(t, s, e, "1. ", true)))}
@@ -161,7 +177,11 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
           <textarea
             ref={box}
             id={id}
-            onSelect={e => setLevel(headingAt(e.currentTarget.value, e.currentTarget.selectionStart))}
+            onMouseDown={() => { setStyleMenu(false); setColors(false); }}
+            onSelect={e => {
+              setLevel(headingAt(e.currentTarget.value, e.currentTarget.selectionStart));
+              setAlign(alignAt(e.currentTarget.value, e.currentTarget.selectionStart));
+            }}
             value={value}
             maxLength={maxLength}
             onChange={e => onChange(e.target.value)}

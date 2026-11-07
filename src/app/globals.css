@@ -465,7 +465,11 @@ select, .field select { appearance: none; -webkit-appearance: none; padding-righ
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 3h2v10l3.5-3.5 1.4 1.4L12 16.8 6.1 10.9l1.4-1.4L11 13zM4 19h16v2H4z'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11 3h2v10l3.5-3.5 1.4 1.4L12 16.8 6.1 10.9l1.4-1.4L11 13zM4 19h16v2H4z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.md-tools .md-style { height: 30px; min-height: 0; width: auto; padding: 0 6px; border: 1px solid var(--outline); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; margin-right: 4px; }
+.md-tools .md-style { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border: 1px solid var(--outline); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; cursor: pointer; margin-right: 4px; white-space: nowrap; }
+.md-menu { position: absolute; top: 34px; left: 0; z-index: 5; display: flex; flex-direction: column; min-width: 170px; padding: 4px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.md-menu-item { text-align: left; border: 0; background: none; color: var(--ink); padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 15px; }
+.md-menu-item:hover, .md-menu-item.on { background: var(--surface-2); }
+.md-menu-item.md-h1 { font-size: 20px; font-weight: 700; } .md-menu-item.md-h2 { font-size: 17px; font-weight: 700; } .md-menu-item.md-h3 { font-size: 15px; font-weight: 700; }
 .md-colors { position: relative; display: inline-flex; }
 .md-swatches { position: absolute; top: 34px; left: 0; z-index: 5; display: flex; gap: 6px; padding: 8px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 .md-swatch { width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: currentColor; }

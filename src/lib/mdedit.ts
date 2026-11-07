@@ -78,27 +78,51 @@ export function headingAt(text: string, at: number): number {
   return Math.min(/^(#{1,6})\s/.exec(text.slice(from))?.[1].length ?? 0, 3);
 }
 
-/** Puts the lines the selection touches inside [center] or [right], or back to the left. */
-export function setAlign(text: string, start: number, end: number, align: "left" | "center" | "right"): Edit {
-  let from = text.lastIndexOf("\n", start - 1) + 1;
-  const nl = text.indexOf("\n", end);
-  let to = nl === -1 ? text.length : nl;
-  // Already inside an aligned block: take that block's tags off first.
-  const before = text.slice(0, from);
-  const opened = /\[(center|right)\]\n$/i.exec(before);
-  if (opened) {
-    const close = text.indexOf(`\n[/${opened[1]}]`, to - 1);
-    if (close !== -1) {
-      text = text.slice(0, from - opened[0].length) + text.slice(from, close) + text.slice(close + opened[1].length + 4);
-      from -= opened[0].length;
-      to -= opened[0].length;
-    }
+export type Align = "left" | "center" | "right";
+
+/** The [center] or [right] block the cursor is in, if any. */
+function blockAt(text: string, at: number): { tag: "center" | "right"; open: number; body: number; close: number; end: number } | null {
+  const opens = [...text.slice(0, at).matchAll(/\[(center|right)\]\n/gi)];
+  const last = opens[opens.length - 1];
+  if (!last) return null;
+  const tag = last[1].toLowerCase() as "center" | "right";
+  const body = last.index + last[0].length;
+  const close = text.toLowerCase().indexOf(`\n[/${tag}]`, body - 1);
+  if (close === -1 || close < at) return null;
+  return { tag, open: last.index, body, close, end: close + tag.length + 4 };
+}
+
+/** How the line the cursor is on is aligned. */
+export function alignAt(text: string, at: number): Align {
+  return blockAt(text, at)?.tag ?? "left";
+}
+
+/** Aligns the lines the selection touches; inside a [center] or [right] block, the whole block changes. */
+export function setAlign(text: string, start: number, end: number, align: Align): Edit {
+  const block = blockAt(text, start);
+  let from: number, to: number;
+  if (block) {
+    const body = text.slice(block.body, block.close);
+    text = text.slice(0, block.open) + body + text.slice(block.end);
+    from = block.open;
+    to = block.open + body.length;
+  } else {
+    from = text.lastIndexOf("\n", start - 1) + 1;
+    const nl = text.indexOf("\n", end);
+    to = nl === -1 ? text.length : nl;
   }
   const body = text.slice(from, to);
-  const wrapped = align === "left" ? body : `[${align}]\n${body}\n[/${align}]`;
-  const shift = align === "left" ? 0 : align.length + 3;
-  return { text: text.slice(0, from) + wrapped + text.slice(to), start: from + shift, end: from + shift + body.length };
+  if (align === "left") return { text, start: from, end: to };
+  const shift = align.length + 3;
+  return { text: text.slice(0, from) + `[${align}]\n${body}\n[/${align}]` + text.slice(to), start: from + shift, end: from + shift + body.length };
 }
+
+/** One button for alignment: left, then center, then right, then back to left. */
+export function cycleAlign(text: string, start: number, end: number): Edit {
+  const next: Record<Align, Align> = { left: "center", center: "right", right: "left" };
+  return setAlign(text, start, end, next[alignAt(text, start)]);
+}
+
 
 /** A download button on its own line where the cursor is. */
 export function downloadMarkdown(text: string, start: number, end: number, url: string): Edit {

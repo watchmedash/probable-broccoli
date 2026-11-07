@@ -213,3 +213,14 @@ describe("editor tags", () => {
     expect(downloadMarkdown("x", 1, 1, "https://y.z/f.zip").text).toBe("x\n\n[DOWNLOAD]https://y.z/f.zip[/DOWNLOAD]\n\n");
   });
 });
+
+import { cycleAlign } from "./mdedit";
+describe("alignment button", () => {
+  it("goes left, center, right and round again, for a line inside a block too", () => {
+    const a = cycleAlign("x\none\ntwo\ny", 2, 9);
+    expect(a.text).toBe("x\n[center]\none\ntwo\n[/center]\ny");
+    const b = cycleAlign(a.text, a.text.indexOf("two"), a.text.indexOf("two"));
+    expect(b.text).toBe("x\n[right]\none\ntwo\n[/right]\ny");
+    expect(cycleAlign(b.text, b.start, b.end).text).toBe("x\none\ntwo\ny");
+  });
+});
