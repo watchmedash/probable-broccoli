@@ -1,12 +1,13 @@
 "use client";
 import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
-  faBold, faCode, faHeading, faItalic, faLink, faListOl, faListUl, faQuoteLeft, faStrikethrough,
+  faAlignCenter, faAlignLeft, faAlignRight, faBold, faCode, faDownload, faEyeSlash, faItalic, faLink, faListOl, faListUl,
+  faPalette, faQuoteLeft, faStrikethrough, faUnderline,
 } from "@fortawesome/free-solid-svg-icons";
 import { useLayoutEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/errors";
-import { renderMarkdown } from "@/lib/markdown";
-import { imageMarkdown, isImageUrl, linePrefix, wrapSelection, type Edit } from "@/lib/mdedit";
+import { renderMarkdown, TEXT_COLORS } from "@/lib/markdown";
+import { downloadMarkdown, headingAt, imageMarkdown, isImageUrl, linePrefix, setAlign, setHeading, wrapSelection, wrapWith, type Edit } from "@/lib/mdedit";
 import { uploadImage } from "@/lib/upload";
 import { Icon, I } from "./Icon";
 
@@ -21,7 +22,10 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
   const pendingSelection = useRef<[number, number] | null>(null);
   const [preview, setPreview] = useState(false);
   const [uploads, setUploads] = useState(0);
-  const [asking, setAsking] = useState(false);
+  // The address row under the buttons, for a picture or a download.
+  const [asking, setAsking] = useState<"image" | "download" | null>(null);
+  const [colors, setColors] = useState(false);
+  const [level, setLevel] = useState(0);
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -62,9 +66,10 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
     const url = address.trim();
     if (!isImageUrl(url, false)) return setError("That needs to be a full https:// address.");
     setError(null);
-    setAsking(false);
+    const kind = asking;
+    setAsking(null);
     setAddress("");
-    apply((t, s, e) => imageMarkdown(t, s, e, url));
+    apply((t, s, e) => (kind === "download" ? downloadMarkdown(t, s, e, url) : imageMarkdown(t, s, e, url)));
   }
 
   const tool = (icon: IconDefinition, name: string, run: () => void) => (
@@ -82,10 +87,37 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
         <div className="md-tools">
           {!preview && (
             <>
+              <select
+                className="md-style"
+                aria-label="Paragraph style"
+                value={level}
+                onChange={e => { const n = Number(e.target.value); setLevel(n); apply((t, s, end) => setHeading(t, s, end, n)); }}
+              >
+                <option value={0}>Paragraph</option>
+                <option value={1}>Heading 1</option>
+                <option value={2}>Heading 2</option>
+                <option value={3}>Heading 3</option>
+              </select>
               {tool(faBold, "Bold", () => apply((t, s, e) => wrapSelection(t, s, e, "**")))}
               {tool(faItalic, "Italic", () => apply((t, s, e) => wrapSelection(t, s, e, "*")))}
+              {tool(faUnderline, "Underline", () => apply((t, s, e) => wrapWith(t, s, e, "[u]", "[/u]")))}
               {tool(faStrikethrough, "Strikethrough", () => apply((t, s, e) => wrapSelection(t, s, e, "~~")))}
-              {tool(faHeading, "Heading", () => apply((t, s, e) => linePrefix(t, s, e, "## ")))}
+              <span className="md-colors">
+                {tool(faPalette, "Text colour", () => setColors(c => !c))}
+                {colors && (
+                  <span className="md-swatches" role="menu">
+                    {TEXT_COLORS.map(c => (
+                      <button key={c} type="button" role="menuitem" className={`md-swatch md-c-${c}`} aria-label={c} title={c}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setColors(false); apply((t, s, e) => wrapWith(t, s, e, `[color=${c}]`, "[/color]")); }} />
+                    ))}
+                  </span>
+                )}
+              </span>
+              {tool(faEyeSlash, "Spoiler", () => apply((t, s, e) => wrapWith(t, s, e, ">!", "!<")))}
+              {tool(faAlignLeft, "Align left", () => apply((t, s, e) => setAlign(t, s, e, "left")))}
+              {tool(faAlignCenter, "Align center", () => apply((t, s, e) => setAlign(t, s, e, "center")))}
+              {tool(faAlignRight, "Align right", () => apply((t, s, e) => setAlign(t, s, e, "right")))}
               {tool(faQuoteLeft, "Quote", () => apply((t, s, e) => linePrefix(t, s, e, "> ")))}
               {tool(faListUl, "List", () => apply((t, s, e) => linePrefix(t, s, e, "- ")))}
               {tool(faListOl, "Numbered list", () => apply((t, s, e) => linePrefix(t, s, e, "1. ", true)))}
@@ -96,13 +128,14 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
                 const urlStart = s + text.length + 3;
                 return { text: t.slice(0, s) + inserted + t.slice(e), start: urlStart, end: urlStart + 8 };
               }))}
+              {tool(faDownload, "Download button", () => setAsking(a => (a === "download" ? null : "download")))}
               {imagesAllowed && (
                 <>
                   <label className="md-tool" aria-label="Upload a picture" title="Upload a picture">
                     <Icon icon={I.imageOutline} size={14} />
                     <input type="file" hidden multiple accept="image/jpeg,image/png,image/webp,image/gif" onChange={e => { addFiles([...(e.target.files ?? [])]); e.target.value = ""; }} />
                   </label>
-                  <button type="button" className="md-tool md-tool-text" onMouseDown={e => e.preventDefault()} onClick={() => setAsking(a => !a)}>Image URL</button>
+                  <button type="button" className="md-tool md-tool-text" onMouseDown={e => e.preventDefault()} onClick={() => setAsking(a => (a === "image" ? null : "image"))}>Image URL</button>
                 </>
               )}
             </>
@@ -112,7 +145,7 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
         {asking && !preview && (
           <div className="md-url">
             <input
-              aria-label="Image address"
+              aria-label={asking === "download" ? "Download address" : "Image address"}
               placeholder="https://"
               value={address}
               autoFocus
@@ -128,6 +161,7 @@ export function MarkdownEditor({ id, label, value, onChange, maxLength, imagesAl
           <textarea
             ref={box}
             id={id}
+            onSelect={e => setLevel(headingAt(e.currentTarget.value, e.currentTarget.selectionStart))}
             value={value}
             maxLength={maxLength}
             onChange={e => onChange(e.target.value)}

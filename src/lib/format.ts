@@ -37,6 +37,9 @@ export function monthYear(iso: string): string {
 export function plainText(md: string, max = 200): string {
   const text = md
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    // [DOWNLOAD]url[/DOWNLOAD] goes whole; the other tags ([u], [color=red], [center]) leave their text.
+    .replace(/\[download(?:=[^\]\n]*)?\][^[]*\[\/download\]/gi, "")
+    .replace(/\[\/?(?:u|colou?r(?:=[a-z]*)?|center|right)\]/gi, "")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     // Emphasis markers go; underscores inside words and links stay.
     .replace(/[*~`>#]+/g, "")

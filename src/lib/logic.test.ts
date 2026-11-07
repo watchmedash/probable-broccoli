@@ -91,6 +91,23 @@ describe("markdown", () => {
   it("escapes raw html", () => {
     expect(renderMarkdown("<script>alert(1)</script>")).not.toContain("<script>");
   });
+  it("underlines, colours, aligns and makes download buttons", () => {
+    expect(renderMarkdown("a [u]b[/u] c")).toContain("<u>b</u>");
+    expect(renderMarkdown("[color=red]hot[/color]")).toContain('<span class="md-c-red">hot</span>');
+    expect(renderMarkdown("[color=nope]x[/color]")).toContain("[color=nope]x[/color]");
+    expect(renderMarkdown("[u][color=blue]**both**[/color][/u]")).toContain('<u><span class="md-c-blue"><strong>both</strong></span></u>');
+    expect(renderMarkdown("[center]\nmiddle\n[/center]\nafter")).toMatch(/<div class="md-center"><p>middle<\/p>\n<\/div><p>after<\/p>/);
+    expect(renderMarkdown("[right]end[/right]")).toContain('<div class="md-right"><p>end</p>');
+    const dl = renderMarkdown("**[DOWNLOAD]https://x.com/a.mp4[/DOWNLOAD]**");
+    expect(dl).toContain('class="md-download"');
+    expect(dl).toContain('href="https://x.com/a.mp4"');
+    expect(dl).toContain(">Download</a>");
+    expect(dl).not.toContain("title=");
+    expect(renderMarkdown("[download=Part 1]https://x.com/1.zip[/download]")).toContain(">Part 1</a>");
+    expect(renderMarkdown("`[u]code[/u]`")).toContain("[u]code[/u]");
+    expect(renderPreview("[DOWNLOAD]https://x.com/a.mp4[/DOWNLOAD]")).toContain('<span class="md-download">Download</span>');
+    expect(renderPreview("[color=red]cut off here", 12)).not.toContain("[color");
+  });
   it("hides >!spoilers!< until clicked, even at the start of a line", () => {
     expect(renderMarkdown("the end: >!he was a ghost!<")).toContain('<span class="md-spoiler">he was a ghost</span>');
     expect(renderMarkdown(">!all of it!<")).not.toContain("<blockquote>");
@@ -172,5 +189,27 @@ describe("post editor", () => {
   it("finds the first picture in the text", () => {
     expect(firstBodyImage("hi ![](https://x.co/a.png) ![b](https://x.co/b.png)")).toBe("https://x.co/a.png");
     expect(firstBodyImage("no pictures")).toBeNull();
+  });
+});
+
+import { setAlign, setHeading, wrapWith, downloadMarkdown } from "./mdedit";
+describe("editor tags", () => {
+  it("centres lines, moves them right, and puts them back left", () => {
+    const c = setAlign("one\ntwo", 0, 0, "center");
+    expect(c.text).toBe("[center]\none\n[/center]\ntwo");
+    const r = setAlign(c.text, c.start, c.end, "right");
+    expect(r.text).toBe("[right]\none\n[/right]\ntwo");
+    const l = setAlign(r.text, r.start, r.end, "left");
+    expect(l.text).toBe("one\ntwo");
+  });
+  it("switches a line between paragraph and headings", () => {
+    expect(setHeading("hi", 0, 0, 2).text).toBe("## hi");
+    expect(setHeading("## hi", 3, 3, 0).text).toBe("hi");
+  });
+  it("wraps and unwraps tags", () => {
+    const w = wrapWith("a b", 2, 3, "[u]", "[/u]");
+    expect(w.text).toBe("a [u]b[/u]");
+    expect(wrapWith(w.text, w.start, w.end, "[u]", "[/u]").text).toBe("a b");
+    expect(downloadMarkdown("x", 1, 1, "https://y.z/f.zip").text).toBe("x\n\n[DOWNLOAD]https://y.z/f.zip[/DOWNLOAD]\n\n");
   });
 });
