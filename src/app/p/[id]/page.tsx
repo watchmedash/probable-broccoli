@@ -92,6 +92,12 @@ export default async function PostPage({ params, searchParams }: { params: Promi
   const pageVideo = firstLink && !post.spoiler && !post.mature && !isBlockedVideo(firstLink, blockedVideos) ? await linkVideo(firstLink) : null;
   const shownLink = video?.url && post.body.includes(video.url) ? video.url : yt ? [...post.body.matchAll(/https?:\/\/[^\s)\]]+/g)].map(m => m[0]).find(u => youTubeId(u)) ?? null : pageVideo && !isBlockedVideo(pageVideo, blockedVideos) ? firstLink : null;
   const shownBody = shownLink ? withoutBareLink(post.body, shownLink) : post.body;
+  // A player's link standing on its own line: the player goes in that spot instead of above the text.
+  const playerLink = (yt || video) && shownLink ? shownLink : null;
+  const spot = playerLink ? new RegExp(`(^|\\s)${playerLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`).exec(post.body) : null;
+  const playerAt = spot && !onlyLink
+    ? { before: post.body.slice(0, spot.index).trim(), after: post.body.slice(spot.index + spot[0].length).trim() }
+    : null;
   const closed = post.locked || post.community?.status === "archived" || (!!me && !access.canComment && !access.isStaff);
 
   const jsonLd = {
@@ -170,9 +176,20 @@ export default async function PostPage({ params, searchParams }: { params: Promi
             <Lightbox>
               {images.length === 1 && <div className="media"><img src={images[0]} alt="" /></div>}
               {images.length > 1 && <div className="gallery">{images.map(u => <img key={u} src={u} alt="" loading="lazy" />)}</div>}
-              {yt && <YouTube id={yt} title={post.title} playInline />}
-              {video && <VideoPlayer video={video} title={post.title} playInline />}
-              {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody, { hubs }) }} />}
+              {playerAt ? (
+                // The player sits where its link was written, between the text before and after it.
+                <>
+                  {playerAt.before && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(playerAt.before, { hubs }) }} />}
+                  {yt ? <YouTube id={yt} title={post.title} playInline /> : video && <VideoPlayer video={video} title={post.title} playInline />}
+                  {playerAt.after && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(playerAt.after, { hubs }) }} />}
+                </>
+              ) : (
+                <>
+                  {yt && <YouTube id={yt} title={post.title} playInline />}
+                  {video && <VideoPlayer video={video} title={post.title} playInline />}
+                  {!onlyLink && shownBody && <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(shownBody, { hubs }) }} />}
+                </>
+              )}
             </Lightbox>
           </Covered>
           {post.original && <OriginalCard original={post.original} spoiler={post.spoiler} mature={post.mature} />}
